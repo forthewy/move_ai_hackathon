@@ -63,26 +63,42 @@ def _build_manual_prompt(
     req: RiskAnalyzeRequest,
     article: Optional[FetchedArticle] = None,
 ) -> str:
-    if req.selected_article:
-        art_title = article.title if article else req.selected_article.title
-        art_body = article.body if article else f"{req.selected_article.title}\n{req.selected_article.snippet}"
-        art_url = article.url if article else req.selected_article.link
-        source_name = req.selected_article.source_name or "뉴스 매체"
+    articles_list = list(req.selected_articles or [])
+    if req.selected_article and req.selected_article not in articles_list:
+        articles_list.insert(0, req.selected_article)
+
+    if len(articles_list) > 0:
+        blocks = []
+        for idx, art_item in enumerate(articles_list, 1):
+            fetched: Optional[FetchedArticle] = None
+            try:
+                fetched = fetch_article(art_item.link)
+            except Exception:
+                fetched = None
+
+            art_title = fetched.title if fetched and fetched.title else art_item.title
+            art_body = fetched.body if fetched and fetched.body else f"{art_item.title}\n{art_item.snippet}"
+            art_url = fetched.url if fetched and fetched.url else art_item.link
+            source_name = art_item.source_name or "뉴스 매체"
+
+            blocks.append(
+                f"--- [선택 기사 {idx} / {len(articles_list)}] ---\n"
+                f"[기사 출처] {source_name}\n"
+                f"[기사 URL] {art_url}\n"
+                f"[기사 제목] {art_title}\n"
+                f"[기사 내용]\n{art_body}"
+            )
+
+        combined_text = "\n\n".join(blocks)
         return f"""
 [입력 유형]
-실시간 뉴스 검색 기사 선택 분석 ({source_name})
+실시간 뉴스 검색 선택 기사 {len(articles_list)}건 종합 정성 분석
 
-[기사 URL]
-{art_url}
+{combined_text}
 
-[기사 제목]
-{art_title}
-
-[기사 내용]
-{art_body}
-
-위 입력을 직접 읽고 홍해·수에즈 상업 해운에 대한 관련성과 위험등급을 판단하라.
-기사에 쓰이지 않은 사실은 보완하지 말고, 근거 문구와 불확실성을 명확히 구분하라.
+위 선택된 {len(articles_list)}건의 실시간 기사를 종합하여 정성 분석을 수행하라.
+홍해·수에즈 상업 해운에 대한 직접적 관련성과 위험등급을 판단하고,
+기사들에 쓰이지 않은 사실은 보완하지 말고, 공통/핵심 근거 문구와 불확실성을 명확히 구분하라.
 """.strip()
 
     if req.input_mode == "ARTICLE":

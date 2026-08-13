@@ -119,10 +119,11 @@ class RiskAnalyzeRequest(BaseModel):
     article_url: Optional[str] = Field(default="", max_length=2048)
     preset_level: Optional[RiskGrade] = None
     selected_article: Optional[NewsSearchItemSchema] = None
+    selected_articles: Optional[List[NewsSearchItemSchema]] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_analysis_input(self):
-        if self.preset_level or self.selected_article:
+        if self.preset_level or self.selected_article or (self.selected_articles and len(self.selected_articles) > 0):
             return self
 
         if self.input_mode == "ARTICLE":

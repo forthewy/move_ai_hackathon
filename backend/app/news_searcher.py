@@ -29,7 +29,8 @@ def _strip_html(text: str) -> str:
 
 
 def _search_google_news_rss(query: str, limit: int = 5) -> List[NewsSearchItem]:
-    encoded = urllib.parse.quote(query)
+    time_restricted_query = f"{query} when:30d" if "when:" not in query else query
+    encoded = urllib.parse.quote(time_restricted_query)
     url = f"https://news.google.com/rss/search?q={encoded}&hl=ko&gl=KR&ceid=KR:ko"
     req = urllib.request.Request(
         url,

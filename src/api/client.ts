@@ -58,6 +58,7 @@ export async function analyzeRisk(payload: {
   article_url?: string;
   preset_level?: "LOW" | "MEDIUM" | "HIGH";
   selected_article?: NewsSearchItem;
+  selected_articles?: NewsSearchItem[];
 }): Promise<RiskAnalyzeResponse> {
   const res = await fetch("/api/risk/analyze", {
     method: "POST",
