@@ -10,20 +10,22 @@ import {
   ListOrdered,
   HelpCircle,
   ArrowRight,
-  Database,
   Link,
 } from "lucide-react";
 import { RiskAnalyzeResponse } from "../types";
 import { analyzeRisk } from "../api/client";
+import { displayPlant, formatPallets } from "../utils/display";
 
 type ManualInputMode = "KEYWORD" | "ARTICLE";
 type RiskLevel = "HIGH" | "MEDIUM" | "LOW";
 
+const DEFAULT_SCENARIO = "홍해 수송 위험 경고 및 주요 선사 우회 검토";
+
 export function TabRiskAnalysis() {
   const [inputMode, setInputMode] = useState<ManualInputMode>("KEYWORD");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(DEFAULT_SCENARIO);
   const [articleUrl, setArticleUrl] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>("MEDIUM");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RiskAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,19 +33,19 @@ export function TabRiskAnalysis() {
   const presets = [
     {
       level: "HIGH" as const,
-      label: "HIGH 위험: 홍해 선박 공격 및 수에즈 운항 중단 공식 발표",
+      label: "홍해 선박 공격과 수에즈 운항 중단이 공식 발표된 상황",
       queryText: "홍해 선박 공격 및 수에즈 운항 중단 공식 발표",
       badgeColor: "bg-red-50 text-red-700 border-red-200",
     },
     {
       level: "MEDIUM" as const,
-      label: "MEDIUM 위험: 홍해 수송 위험 경고 및 주요 선사 우회 검토",
-      queryText: "홍해 수송 위험 경고 및 주요 선사 우회 검토",
+      label: "홍해 수송 위험 경고로 주요 선사가 우회를 검토하는 상황",
+      queryText: DEFAULT_SCENARIO,
       badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
     },
     {
       level: "LOW" as const,
-      label: "LOW 위험: 중동 지역 지정학적 긴장 및 일반 동향",
+      label: "중동 지역의 지정학적 긴장이 관찰되는 일반 상황",
       queryText: "중동 지역 지정학적 긴장 및 일반 동향",
       badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
     },
@@ -95,8 +97,8 @@ export function TabRiskAnalysis() {
             },
       );
       setResult(data);
-    } catch (err: any) {
-      setError("위험 분석 처리 중 오류가 발생했습니다: " + (err?.message || String(err)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "위험 분석을 완료하지 못했습니다. 다시 시도해 주세요.");
     } finally {
       setLoading(false);
     }
@@ -108,7 +110,11 @@ export function TabRiskAnalysis() {
     ? "bg-amber-100 text-amber-800 border-amber-200"
     : "bg-emerald-100 text-emerald-800 border-emerald-200";
 
-  const yesNo = (value: boolean) => value ? "YES" : "NO";
+  const yesNo = (value: boolean) => value ? "예" : "아니오";
+  const riskLabel = (level: RiskLevel) =>
+    level === "HIGH" ? "위험 높음" : level === "MEDIUM" ? "주의 필요" : "위험 낮음";
+  const relevanceLabel = (value: RiskAnalyzeResponse["shipping_relevance"]) =>
+    value === "DIRECT" ? "직접 관련" : value === "INDIRECT" ? "간접 관련" : "관련 없음";
 
   return (
     <div className="space-y-6">
@@ -117,13 +123,13 @@ export function TabRiskAnalysis() {
           <Search className="w-5 h-5 text-blue-600" />
           <h2 className="text-base font-bold text-slate-900">차질 위험 분석 입력</h2>
           <span className="text-[11px] px-2.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-medium">
-            기사·상황을 Gemini가 직접 분석
+            뉴스·상황 기반 정성 분석
           </span>
         </div>
 
         <div className="mb-5">
           <label className="block text-xs font-semibold text-slate-700 mb-2">
-            팀 합성 시나리오 프리셋
+            빠른 데모 시나리오
           </label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             {presets.map((p) => (
@@ -144,7 +150,7 @@ export function TabRiskAnalysis() {
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.badgeColor}`}>
-                    {p.level} RISK
+                    {riskLabel(p.level)}
                   </span>
                   {selectedPreset === p.level && <span className="w-2 h-2 rounded-full bg-blue-600" />}
                 </div>
@@ -200,7 +206,7 @@ export function TabRiskAnalysis() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
             />
             <p className="mt-1.5 text-[11px] text-slate-500">
-              이 모드는 입력한 문장 자체를 분석합니다. 실시간 뉴스 검색을 수행하지 않습니다.
+              입력한 상황 문장을 기준으로 위험 신호와 준비 행동을 분석합니다.
             </p>
           </div>
         ) : (
@@ -240,7 +246,7 @@ export function TabRiskAnalysis() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Gemini 분석 수행 중...</span>
+                <span>위험 분석 중...</span>
               </>
             ) : (
               <>
@@ -269,23 +275,22 @@ export function TabRiskAnalysis() {
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-slate-500">차질 위험 평가 등급:</span>
+                    <span className="text-xs text-slate-500">차질 위험 등급:</span>
                     <span className={`px-3 py-0.5 rounded-full text-xs font-extrabold tracking-wider border ${riskColor}`}>
-                      {result.risk_grade} RISK
+                      {riskLabel(result.risk_grade)}
                     </span>
                     {result.is_synthetic ? (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 font-medium">
-                        <Database className="w-3 h-3 text-emerald-600" />
-                        팀 합성 시나리오
+                        데모 시나리오
                       </span>
                     ) : (
                       <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 font-medium">
-                        Gemini 직접 분석
+                        입력 내용 분석
                       </span>
                     )}
                   </div>
                   <h3 className="text-sm font-bold text-slate-900 mt-1">
-                    홍해·수에즈 회랑 정성적 차질 분석 보고서
+                    홍해·수에즈 회랑 정성 위험 분석 결과
                   </h3>
                 </div>
               </div>
@@ -294,7 +299,7 @@ export function TabRiskAnalysis() {
             <div className="mt-4">
               <h4 className="text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1.5">
                 <FileText className="w-3.5 h-3.5 text-blue-600" />
-                <span>1. 상황 요약</span>
+                <span>상황 요약</span>
               </h4>
               <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200/80 leading-relaxed">
                 {result.situation_summary}
@@ -302,23 +307,20 @@ export function TabRiskAnalysis() {
             </div>
 
             <div className="mt-4">
-              <h4 className="text-xs font-semibold text-slate-700 mb-1.5">2. Gemini 판단 설명</h4>
+              <h4 className="text-xs font-semibold text-slate-700 mb-1.5">위험 등급 판단 근거</h4>
               <p className="text-xs text-slate-700 bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 leading-relaxed">
                 {result.analysis_explanation}
               </p>
             </div>
 
             <div className="mt-4">
-              <h4 className="text-xs font-semibold text-slate-700 mb-2">3. 구조화 분석 데이터</h4>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
-                <StructuredItem label="입력 방식" value={result.input_mode} />
-                <StructuredItem label="홍해 관련성" value={result.shipping_relevance} />
-                <StructuredItem label="사건 유형" value={result.event_type} />
+              <h4 className="text-xs font-semibold text-slate-700 mb-2">핵심 판단 항목</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5 text-xs">
+                <StructuredItem label="홍해 관련성" value={relevanceLabel(result.shipping_relevance)} />
                 <StructuredItem label="상선 직접 위협" value={yesNo(result.commercial_shipping_threat)} />
                 <StructuredItem label="실제 상선 공격" value={yesNo(result.actual_commercial_ship_attack)} />
                 <StructuredItem label="선사 운영 변경" value={yesNo(result.carrier_operation_change)} />
                 <StructuredItem label="공식 통항 제한" value={yesNo(result.official_transit_restriction)} />
-                <StructuredItem label="합성 데이터" value={yesNo(result.is_synthetic)} />
               </div>
             </div>
           </div>
@@ -328,7 +330,7 @@ export function TabRiskAnalysis() {
               <div className="flex items-center gap-2">
                 <ListOrdered className="w-4 h-4 text-amber-600" />
                 <h3 className="text-xs font-bold text-slate-900">
-                  4. 우선 점검 대상 운송 건
+                  우선 점검 대상 운송 건
                 </h3>
                 <span className="text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-medium">
                   출항예정일 오름차순
@@ -351,7 +353,7 @@ export function TabRiskAnalysis() {
                       <th className="py-2.5 px-3 font-semibold">우선순위</th>
                       <th className="py-2.5 px-3 font-semibold">주문 ID</th>
                       <th className="py-2.5 px-3 font-semibold">목적 공장</th>
-                      <th className="py-2.5 px-3 font-semibold">부품 ID / 명칭</th>
+                      <th className="py-2.5 px-3 font-semibold">부품명</th>
                       <th className="py-2.5 px-3 font-semibold text-right">물량</th>
                       <th className="py-2.5 px-3 font-semibold">출항 예정일</th>
                       <th className="py-2.5 px-3 font-semibold">요구 도착일</th>
@@ -362,12 +364,15 @@ export function TabRiskAnalysis() {
                       <tr key={s.order_id} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-bold text-amber-600">#{idx + 1}</td>
                         <td className="py-2.5 px-3 font-mono text-slate-800 font-semibold">{s.order_id}</td>
-                        <td className="py-2.5 px-3 font-semibold text-blue-700">{s.destination_plant}</td>
                         <td className="py-2.5 px-3">
-                          <span className="font-mono text-slate-500 mr-1.5">[{s.part_id}]</span>
-                          <span className="text-slate-800 font-medium">{s.part_name}</span>
+                          <span className="block font-semibold text-blue-700">{displayPlant(s.destination_plant)}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">{s.destination_plant}</span>
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-emerald-700 font-mono">{s.qty} pallet</td>
+                        <td className="py-2.5 px-3">
+                          <span className="block text-slate-800 font-medium">{s.part_name}</span>
+                          <span className="text-[10px] font-mono text-slate-400">{s.part_id}</span>
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-emerald-700 font-mono">{formatPallets(s.qty)}</td>
                         <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">{s.planned_departure_date}</td>
                         <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px]">{s.required_arrival_date}</td>
                       </tr>
@@ -382,7 +387,7 @@ export function TabRiskAnalysis() {
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
               <h4 className="text-xs font-bold text-sky-800 mb-3 flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-sky-600" />
-                <span>5. 판단 근거</span>
+                <span>판단 근거</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-700">
                 {result.evidence_summary.map((ev, i) => (
@@ -409,7 +414,7 @@ export function TabRiskAnalysis() {
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
               <h4 className="text-xs font-bold text-amber-800 mb-3 flex items-center gap-1.5">
                 <HelpCircle className="w-4 h-4 text-amber-600" />
-                <span>6. 주요 불확실성</span>
+                <span>주요 불확실성</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-700">
                 {result.uncertainty.map((un, i) => (
@@ -424,7 +429,7 @@ export function TabRiskAnalysis() {
             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-sm">
               <h4 className="text-xs font-bold text-emerald-800 mb-3 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-emerald-600" />
-                <span>7. 지금 할 준비 행동</span>
+                <span>지금 할 준비 행동</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-700">
                 {result.preparation_actions.map((act, i) => (
