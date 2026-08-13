@@ -357,3 +357,30 @@ def test_20_optimization_does_not_call_gemini_automatically(monkeypatch):
 
     assert pure.recommended_option_id is not None
     assert mixed.status in ["OPTIMAL", "FEASIBLE"]
+
+
+def test_21_realtime_news_search_integration():
+    from backend.app.news_searcher import search_realtime_news
+    from backend.app.schemas import NewsSearchItemSchema, RiskAnalyzeRequest
+
+    articles = search_realtime_news("홍해 수에즈 공격", limit=3)
+    assert isinstance(articles, list)
+    assert len(articles) > 0
+
+    first_item = articles[0]
+    assert first_item.title
+    assert first_item.link
+
+    schema_item = NewsSearchItemSchema(
+        title=first_item.title,
+        link=first_item.link,
+        snippet=first_item.snippet,
+        pub_date=first_item.pub_date,
+        source_name=first_item.source_name,
+    )
+
+    req = RiskAnalyzeRequest(
+        input_mode="ARTICLE",
+        selected_article=schema_item,
+    )
+    assert req.selected_article is not None

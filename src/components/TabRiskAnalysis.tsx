@@ -11,21 +11,32 @@ import {
   HelpCircle,
   ArrowRight,
   Link,
+  Newspaper,
+  ExternalLink,
+  CheckSquare,
+  Globe,
 } from "lucide-react";
-import { RiskAnalyzeResponse } from "../types";
-import { analyzeRisk } from "../api/client";
+import { RiskAnalyzeResponse, NewsSearchItem } from "../types";
+import { analyzeRisk, searchNews } from "../api/client";
 import { displayPlant, formatPallets } from "../utils/display";
 
 type ManualInputMode = "KEYWORD" | "ARTICLE";
 type RiskLevel = "HIGH" | "MEDIUM" | "LOW";
 
-const DEFAULT_SCENARIO = "홍해 수송 위험 경고 및 주요 선사 우회 검토";
+const DEFAULT_SCENARIO = "홍해 수에즈 상선 공격";
 
 export function TabRiskAnalysis() {
   const [inputMode, setInputMode] = useState<ManualInputMode>("KEYWORD");
   const [query, setQuery] = useState(DEFAULT_SCENARIO);
   const [articleUrl, setArticleUrl] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>("MEDIUM");
+  const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>(null);
+
+  // Real-time news search states
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchedArticles, setSearchedArticles] = useState<NewsSearchItem[]>([]);
+  const [selectedArticle, setSelectedArticle] = useState<NewsSearchItem | null>(null);
+  const [searchExecuted, setSearchExecuted] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RiskAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +51,7 @@ export function TabRiskAnalysis() {
     {
       level: "MEDIUM" as const,
       label: "홍해 수송 위험 경고로 주요 선사가 우회를 검토하는 상황",
-      queryText: DEFAULT_SCENARIO,
+      queryText: "홍해 수송 위험 경고 및 주요 선사 우회 검토",
       badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
     },
     {
@@ -51,7 +62,9 @@ export function TabRiskAnalysis() {
     },
   ];
 
-  const canAnalyze = selectedPreset !== null ||
+  const canAnalyze =
+    selectedPreset !== null ||
+    selectedArticle !== null ||
     (inputMode === "KEYWORD" ? query.trim().length > 0 : articleUrl.trim().length > 0);
 
   const switchInputMode = (mode: ManualInputMode) => {
@@ -60,16 +73,42 @@ export function TabRiskAnalysis() {
     setError(null);
   };
 
+  const handleSearchNews = async () => {
+    if (!query.trim()) {
+      setError("검색할 뉴스 키워드를 입력하세요.");
+      return;
+    }
+    setSearchLoading(true);
+    setError(null);
+    setSelectedArticle(null);
+    try {
+      const res = await searchNews(query.trim(), 5);
+      setSearchedArticles(res.articles || []);
+      setSearchExecuted(true);
+      if ((res.articles || []).length === 0) {
+        setError("관련 뉴스를 찾지 못했습니다. 다른 키워드로 검색해 보세요.");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "뉴스 검색 중 오류가 발생했습니다.");
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!canAnalyze) {
-      setError(inputMode === "ARTICLE" ? "분석할 기사 URL을 입력하세요." : "분석할 키워드·상황을 입력하세요.");
+      setError(
+        inputMode === "ARTICLE"
+          ? "분석할 기사 URL을 입력하세요."
+          : "분석할 키워드를 입력하거나 검색된 기사를 선택하세요."
+      );
       return;
     }
 
-    if (inputMode === "ARTICLE") {
+    if (inputMode === "ARTICLE" && !selectedPreset) {
       try {
         const url = new URL(articleUrl.trim());
-        if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+        if (!["http:", "https:"].includes(url.protocol)) throw new Error();
       } catch {
         setError("http:// 또는 https://로 시작하는 올바른 기사 URL을 입력하세요.");
         return;
@@ -79,38 +118,47 @@ export function TabRiskAnalysis() {
     setLoading(true);
     setError(null);
     try {
-      const data = await analyzeRisk(
-        selectedPreset
-          ? {
-              input_mode: "KEYWORD",
-              query,
-              preset_level: selectedPreset,
-            }
-          : inputMode === "ARTICLE"
-          ? {
-              input_mode: "ARTICLE",
-              article_url: articleUrl.trim(),
-            }
-          : {
-              input_mode: "KEYWORD",
-              query,
-            },
-      );
+      let data: RiskAnalyzeResponse;
+      if (selectedPreset) {
+        data = await analyzeRisk({
+          input_mode: "KEYWORD",
+          query,
+          preset_level: selectedPreset,
+        });
+      } else if (selectedArticle) {
+        data = await analyzeRisk({
+          input_mode: "ARTICLE",
+          selected_article: selectedArticle,
+        });
+      } else if (inputMode === "ARTICLE") {
+        data = await analyzeRisk({
+          input_mode: "ARTICLE",
+          article_url: articleUrl.trim(),
+        });
+      } else {
+        data = await analyzeRisk({
+          input_mode: "KEYWORD",
+          query: query.trim(),
+        });
+      }
       setResult(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "위험 분석을 완료하지 못했습니다. 다시 시도해 주세요.");
+      setError(
+        err instanceof Error ? err.message : "위험 분석을 완료하지 못했습니다. 다시 시도해 주세요."
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const riskColor = result?.risk_grade === "HIGH"
-    ? "bg-red-100 text-red-800 border-red-200"
-    : result?.risk_grade === "MEDIUM"
-    ? "bg-amber-100 text-amber-800 border-amber-200"
-    : "bg-emerald-100 text-emerald-800 border-emerald-200";
+  const riskColor =
+    result?.risk_grade === "HIGH"
+      ? "bg-red-100 text-red-800 border-red-200"
+      : result?.risk_grade === "MEDIUM"
+      ? "bg-amber-100 text-amber-800 border-amber-200"
+      : "bg-emerald-100 text-emerald-800 border-emerald-200";
 
-  const yesNo = (value: boolean) => value ? "예" : "아니오";
+  const yesNo = (value: boolean) => (value ? "예" : "아니오");
   const riskLabel = (level: RiskLevel) =>
     level === "HIGH" ? "위험 높음" : level === "MEDIUM" ? "주의 필요" : "위험 낮음";
   const relevanceLabel = (value: RiskAnalyzeResponse["shipping_relevance"]) =>
@@ -123,13 +171,13 @@ export function TabRiskAnalysis() {
           <Search className="w-5 h-5 text-blue-600" />
           <h2 className="text-base font-bold text-slate-900">차질 위험 분석 입력</h2>
           <span className="text-[11px] px-2.5 py-0.5 rounded bg-sky-50 text-sky-800 border border-sky-200 font-medium">
-            뉴스·상황 기반 정성 분석
+            실시간 뉴스 RSS · API 연동
           </span>
         </div>
 
         <div className="mb-5">
           <label className="block text-xs font-semibold text-slate-700 mb-2">
-            빠른 데모 시나리오
+            빠른 데모 시나리오 (합성 데이터)
           </label>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             {presets.map((p) => (
@@ -141,6 +189,9 @@ export function TabRiskAnalysis() {
                   setInputMode("KEYWORD");
                   setQuery(p.queryText);
                   setArticleUrl("");
+                  setSelectedArticle(null);
+                  setSearchedArticles([]);
+                  setSearchExecuted(false);
                 }}
                 className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col justify-between cursor-pointer ${
                   selectedPreset === p.level
@@ -162,7 +213,7 @@ export function TabRiskAnalysis() {
 
         <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-700 mb-2">
-            직접 분석 입력 방식
+            분석 입력 방식
           </label>
           <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
@@ -174,7 +225,7 @@ export function TabRiskAnalysis() {
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              키워드·상황 입력
+              🔍 실시간 뉴스 키워드 검색
             </button>
             <button
               type="button"
@@ -185,29 +236,135 @@ export function TabRiskAnalysis() {
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              기사 URL 입력
+              🔗 특정 기사 URL 입력
             </button>
           </div>
         </div>
 
         {inputMode === "KEYWORD" ? (
-          <div className="mb-5">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-              키워드·상황 문장
-            </label>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setSelectedPreset(null);
-              }}
-              placeholder="예: 후티가 홍해 상선에 대한 공격 범위를 확대하겠다고 경고"
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
-            />
-            <p className="mt-1.5 text-[11px] text-slate-500">
-              입력한 상황 문장을 기준으로 위험 신호와 준비 행동을 분석합니다.
-            </p>
+          <div className="mb-5 space-y-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                뉴스 검색 키워드
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setSelectedPreset(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !searchLoading) handleSearchNews();
+                  }}
+                  placeholder="예: 홍해 수에즈 상선 공격"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={handleSearchNews}
+                  disabled={searchLoading || !query.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 active:bg-black disabled:opacity-50 text-white font-semibold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+                >
+                  {searchLoading ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Search className="w-3.5 h-3.5" />
+                  )}
+                  <span>실시간 뉴스 검색 (5건)</span>
+                </button>
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-500">
+                Google News RSS 및 Naver API를 통해 최신 관련 기사 3~5건을 수집합니다.
+              </p>
+            </div>
+
+            {/* Render Searched Articles List */}
+            {searchedArticles.length > 0 && (
+              <div className="pt-3 border-t border-slate-100">
+                <div className="flex items-center justify-between mb-2.5">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Newspaper className="w-4 h-4 text-blue-600" />
+                    <span>실시간 검색된 관련 기사 목록 ({searchedArticles.length}건):</span>
+                  </span>
+                  {selectedArticle && (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedArticle(null)}
+                      className="text-[11px] text-slate-500 hover:text-slate-700 underline cursor-pointer"
+                    >
+                      선택 해제 (키워드 문장만 분석)
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {searchedArticles.map((art, idx) => {
+                    const isSelected = selectedArticle?.link === art.link;
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          setSelectedArticle(art);
+                          setSelectedPreset(null);
+                        }}
+                        className={`p-3 rounded-xl border text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20 text-slate-900 shadow-sm"
+                            : "bg-slate-50/80 border-slate-200/80 text-slate-700 hover:bg-slate-100 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3 mb-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                              {art.source_name || "뉴스"}
+                            </span>
+                            {art.pub_date && (
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {art.pub_date}
+                              </span>
+                            )}
+                          </div>
+                          <a
+                            href={art.link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[10px] text-blue-600 hover:text-blue-800 flex items-center gap-0.5 font-medium flex-shrink-0"
+                          >
+                            <span>원문</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
+                        </div>
+                        <h4 className="font-bold text-slate-900 mb-1 leading-snug">
+                          {art.title}
+                        </h4>
+                        <p className="text-[11px] text-slate-600 line-clamp-2 leading-relaxed">
+                          {art.snippet}
+                        </p>
+                        <div className="mt-2 flex items-center justify-end">
+                          <span
+                            className={`text-[10px] font-semibold flex items-center gap-1 ${
+                              isSelected ? "text-blue-700" : "text-slate-400"
+                            }`}
+                          >
+                            {isSelected ? (
+                              <>
+                                <CheckSquare className="w-3.5 h-3.5 text-blue-600" />
+                                <span>분석 대상으로 선택됨</span>
+                              </>
+                            ) : (
+                              <span>클릭하여 분석 대상으로 선택</span>
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="mb-5">
@@ -222,6 +379,7 @@ export function TabRiskAnalysis() {
                 onChange={(e) => {
                   setArticleUrl(e.target.value);
                   setSelectedPreset(null);
+                  setSelectedArticle(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && canAnalyze && !loading) handleAnalyze();
@@ -232,7 +390,7 @@ export function TabRiskAnalysis() {
               />
             </div>
             <p className="mt-1.5 text-[11px] text-slate-500">
-              공개적으로 접근 가능한 기사 URL을 입력하면 서버가 제목과 본문을 가져와 분석합니다.
+              공개적으로 접근 가능한 기사 URL을 입력하면 서버가 본문을 수집하여 분석합니다.
             </p>
           </div>
         )}
@@ -246,12 +404,16 @@ export function TabRiskAnalysis() {
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>위험 분석 중...</span>
+                <span>Gemini 위험 분석 중...</span>
               </>
             ) : (
               <>
                 <Send className="w-4 h-4" />
-                <span>차질 위험 분석 실행</span>
+                <span>
+                  {selectedArticle
+                    ? "선택한 뉴스 기사 위험 분석 실행"
+                    : "차질 위험 분석 실행"}
+                </span>
               </>
             )}
           </button>
@@ -284,8 +446,9 @@ export function TabRiskAnalysis() {
                         데모 시나리오
                       </span>
                     ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 font-medium">
-                        입력 내용 분석
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1 font-medium">
+                        <Globe className="w-3 h-3 text-purple-600" />
+                        실시간 기사·상황 분석
                       </span>
                     )}
                   </div>

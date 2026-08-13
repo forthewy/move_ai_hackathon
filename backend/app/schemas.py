@@ -94,16 +94,35 @@ class GeminiRiskAnalysis(BaseModel):
     )
 
 
+class NewsSearchItemSchema(BaseModel):
+    title: str
+    link: str
+    snippet: str
+    pub_date: str
+    source_name: str
+
+
+class NewsSearchRequest(BaseModel):
+    query: str = Field(..., max_length=1000)
+    limit: Optional[int] = 5
+
+
+class NewsSearchResponse(BaseModel):
+    query: str
+    articles: List[NewsSearchItemSchema]
+
+
 # Risk Analysis Request/Response
 class RiskAnalyzeRequest(BaseModel):
     input_mode: RiskInputMode = "KEYWORD"
     query: Optional[str] = Field(default="", max_length=3000)
     article_url: Optional[str] = Field(default="", max_length=2048)
     preset_level: Optional[RiskGrade] = None
+    selected_article: Optional[NewsSearchItemSchema] = None
 
     @model_validator(mode="after")
     def validate_analysis_input(self):
-        if self.preset_level:
+        if self.preset_level or self.selected_article:
             return self
 
         if self.input_mode == "ARTICLE":

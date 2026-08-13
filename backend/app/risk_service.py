@@ -63,6 +63,28 @@ def _build_manual_prompt(
     req: RiskAnalyzeRequest,
     article: Optional[FetchedArticle] = None,
 ) -> str:
+    if req.selected_article:
+        art_title = article.title if article else req.selected_article.title
+        art_body = article.body if article else f"{req.selected_article.title}\n{req.selected_article.snippet}"
+        art_url = article.url if article else req.selected_article.link
+        source_name = req.selected_article.source_name or "뉴스 매체"
+        return f"""
+[입력 유형]
+실시간 뉴스 검색 기사 선택 분석 ({source_name})
+
+[기사 URL]
+{art_url}
+
+[기사 제목]
+{art_title}
+
+[기사 내용]
+{art_body}
+
+위 입력을 직접 읽고 홍해·수에즈 상업 해운에 대한 관련성과 위험등급을 판단하라.
+기사에 쓰이지 않은 사실은 보완하지 말고, 근거 문구와 불확실성을 명확히 구분하라.
+""".strip()
+
     if req.input_mode == "ARTICLE":
         if article is None:
             raise ValueError("기사 URL에서 본문을 가져오지 못했습니다.")
@@ -154,9 +176,16 @@ def analyze_risk(req: RiskAnalyzeRequest) -> RiskAnalyzeResponse:
     if req.preset_level:
         return _build_synthetic_response(req.preset_level, all_priority_shipments)
 
-    article = fetch_article(req.article_url or "") if req.input_mode == "ARTICLE" else None
+    article: Optional[FetchedArticle] = None
+    if req.selected_article:
+        try:
+            article = fetch_article(req.selected_article.link)
+        except Exception:
+            article = None
+    elif req.input_mode == "ARTICLE" and req.article_url:
+        article = fetch_article(req.article_url)
 
-    # 실제 키워드·상황 또는 URL에서 수집한 기사 본문은 Gemini가 직접 읽고 구조화된 결과를 생성한다.
+    # 실제 키워드·상황 또는 URL/검색에서 수집한 기사 본문은 Gemini가 직접 읽고 구조화된 결과를 생성한다.
     analysis = generate_structured_with_gemini(
         prompt=_build_manual_prompt(req, article),
         response_model=GeminiRiskAnalysis,

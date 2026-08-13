@@ -24,6 +24,19 @@ export interface PriorityShipment {
 export type RiskInputMode = "KEYWORD" | "ARTICLE" | "PRESET";
 export type ShippingRelevance = "DIRECT" | "INDIRECT" | "NONE";
 
+export interface NewsSearchItem {
+  title: string;
+  link: string;
+  snippet: string;
+  pub_date: string;
+  source_name: string;
+}
+
+export interface NewsSearchResponse {
+  query: string;
+  articles: NewsSearchItem[];
+}
+
 export interface RiskAnalyzeResponse {
   input_mode: RiskInputMode;
   situation_summary: string;

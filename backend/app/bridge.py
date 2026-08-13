@@ -47,6 +47,26 @@ def main():
             req = MixedOptimizeRequest(**data)
             res = optimize_mixed_allocation(req)
             print(json.dumps(res.model_dump(), ensure_ascii=False))
+        elif cmd == "search_news":
+            from backend.app.schemas import NewsSearchRequest, NewsSearchResponse, NewsSearchItemSchema
+            from backend.app.news_searcher import search_realtime_news
+
+            req = NewsSearchRequest(**data)
+            items = search_realtime_news(req.query, req.limit or 5)
+            res = NewsSearchResponse(
+                query=req.query,
+                articles=[
+                    NewsSearchItemSchema(
+                        title=i.title,
+                        link=i.link,
+                        snippet=i.snippet,
+                        pub_date=i.pub_date,
+                        source_name=i.source_name,
+                    )
+                    for i in items
+                ],
+            )
+            print(json.dumps(res.model_dump(), ensure_ascii=False))
         elif cmd == "explain":
             req = ExplainRequest(**data)
             exp = explain_result(req)
