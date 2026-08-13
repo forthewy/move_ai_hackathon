@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from .schemas import (
     GeminiRiskAnalysis,
@@ -9,6 +9,7 @@ from .schemas import (
 )
 from .data_loader import load_data, load_synthetic_news
 from .gemini_service import generate_structured_with_gemini
+from .article_fetcher import FetchedArticle, fetch_article
 
 
 RISK_SYSTEM_INSTRUCTION = """
@@ -58,17 +59,25 @@ def sort_shipments_by_priority(orders: List[OrderModel]) -> List[PriorityShipmen
     ]
 
 
-def _build_manual_prompt(req: RiskAnalyzeRequest) -> str:
+def _build_manual_prompt(
+    req: RiskAnalyzeRequest,
+    article: Optional[FetchedArticle] = None,
+) -> str:
     if req.input_mode == "ARTICLE":
+        if article is None:
+            raise ValueError("기사 URL에서 본문을 가져오지 못했습니다.")
         return f"""
 [입력 유형]
-기사 본문 직접 입력
+기사 URL 자동 수집
+
+[기사 URL]
+{article.url}
 
 [기사 제목]
-{(req.article_title or '').strip() or '(제목 미입력)'}
+{article.title or '(제목 추출 실패)'}
 
 [기사 본문]
-{(req.article_body or '').strip()}
+{article.body}
 
 위 입력을 직접 읽고 홍해·수에즈 상업 해운에 대한 관련성과 위험등급을 판단하라.
 기사에 쓰이지 않은 사실은 보완하지 말고, 근거 문구와 불확실성을 명확히 구분하라.
@@ -145,9 +154,11 @@ def analyze_risk(req: RiskAnalyzeRequest) -> RiskAnalyzeResponse:
     if req.preset_level:
         return _build_synthetic_response(req.preset_level, all_priority_shipments)
 
-    # 실제 키워드·상황 또는 기사 본문은 Gemini가 직접 읽고 구조화된 결과를 생성한다.
+    article = fetch_article(req.article_url or "") if req.input_mode == "ARTICLE" else None
+
+    # 실제 키워드·상황 또는 URL에서 수집한 기사 본문은 Gemini가 직접 읽고 구조화된 결과를 생성한다.
     analysis = generate_structured_with_gemini(
-        prompt=_build_manual_prompt(req),
+        prompt=_build_manual_prompt(req, article),
         response_model=GeminiRiskAnalysis,
         system_instruction=RISK_SYSTEM_INSTRUCTION,
     )

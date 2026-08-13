@@ -22,11 +22,10 @@ import { fetchOrders, optimizeMixedAllocation } from "../api/client";
 export function TabMixedOptimization() {
   const [orders, setOrders] = useState<OrderModel[]>([]);
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
-  const [objectiveMode, setObjectiveMode] = useState<"TOTAL_DECISION_COST" | "DELAY_THEN_COST">("TOTAL_DECISION_COST");
-  const [disruptionOccurred, setDisruptionOccurred] = useState<boolean>(true);
   const [result, setResult] = useState<MixedOptimizeResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [disruptionOccurred, setDisruptionOccurred] = useState<boolean>(true);
 
   useEffect(() => {
     fetchOrders()
@@ -43,7 +42,6 @@ export function TabMixedOptimization() {
     try {
       const res = await optimizeMixedAllocation({
         selected_order_ids: selectedOrderIds.length > 0 ? selectedOrderIds : undefined,
-        objective_mode: objectiveMode,
         disruption_occurred: disruptionOccurred,
       });
       setResult(res);
@@ -105,65 +103,11 @@ export function TabMixedOptimization() {
           </button>
         </div>
 
-        {/* Objective Mode Selection UI */}
-        <div className="mb-5 p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-          <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5 mb-2.5">
-            <Layers className="w-4 h-4 text-blue-600" />
-            <span>최적화 목적함수 정책 선택 (Objective Mode)</span>
-          </label>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setObjectiveMode("TOTAL_DECISION_COST")}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                objectiveMode === "TOTAL_DECISION_COST"
-                  ? "bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20"
-                  : "bg-white border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-slate-900">
-                  1. 비용·지연 종합 최소화 (TOTAL_DECISION_COST)
-                </span>
-                {objectiveMode === "TOTAL_DECISION_COST" && (
-                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                운송비, 고정비, 지연 패널티의 합이 가장 낮은 조합 (기본 설정)
-              </p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setObjectiveMode("DELAY_THEN_COST")}
-              className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
-                objectiveMode === "DELAY_THEN_COST"
-                  ? "bg-purple-50/90 border-purple-500 ring-2 ring-purple-500/20"
-                  : "bg-white border-slate-200 hover:border-slate-300"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-bold text-slate-900">
-                  2. 납기 우선 후 비용 최소화 (DELAY_THEN_COST)
-                </span>
-                {objectiveMode === "DELAY_THEN_COST" && (
-                  <CheckCircle2 className="w-4 h-4 text-purple-600" />
-                )}
-              </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                총 지연 pallet-day를 먼저 최소화한 뒤 같은 지연 수준에서 운송비 최소화 (사전식 2단계)
-              </p>
-            </button>
-          </div>
-        </div>
-
-        {/* Disruption Status */}
-        <div className="mb-5 flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200/80">
+        {/* Disruption Status Toggle */}
+        <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 mt-4">
           <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4 text-red-600" />
-            <span>홍해·수에즈 물류 차질 상태</span>
+            <span>홍해·수에즈 물류 차질 발생 상태 (Disruption):</span>
           </span>
           <button
             type="button"
@@ -174,7 +118,7 @@ export function TabMixedOptimization() {
                 : "bg-emerald-100 border border-emerald-300 text-emerald-800"
             }`}
           >
-            {disruptionOccurred ? "차질 발생" : "정상 운항"}
+            {disruptionOccurred ? "🔴 차질 발생 (지연 12일 가산 상태)" : "🟢 정상 통항 (정상 소요일 기준 최적화)"}
           </button>
         </div>
 
@@ -241,19 +185,6 @@ export function TabMixedOptimization() {
         </div>
       )}
 
-      {/* Warnings Block */}
-      {result && result.warnings && result.warnings.length > 0 && (
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs space-y-1 font-medium">
-          <div className="flex items-center gap-2 font-bold mb-1">
-            <AlertTriangle className="w-4 h-4 text-amber-600" />
-            <span>최적화 유의사항 및 경고:</span>
-          </div>
-          {result.warnings.map((w, idx) => (
-            <div key={idx} className="pl-6">• {w}</div>
-          ))}
-        </div>
-      )}
-
       {/* Results View */}
       {result && (
         <div className="space-y-6">
@@ -265,8 +196,8 @@ export function TabMixedOptimization() {
                   <Cpu className="w-6 h-6" />
                 </div>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-slate-500">Solver 상태:</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">CP-SAT Solver 상태:</span>
                     <span
                       className={`px-3 py-0.5 rounded-full text-xs font-extrabold tracking-wider border ${
                         result.status === "OPTIMAL"
@@ -278,30 +209,19 @@ export function TabMixedOptimization() {
                     >
                       {result.status}
                     </span>
-
-                    <span className="text-[11px] px-2.5 py-0.5 rounded bg-slate-100 text-slate-800 border border-slate-200 font-mono font-medium">
-                      정책: {result.objective_mode}
-                    </span>
-
-                    {result.objective_mode === "DELAY_THEN_COST" && (
-                      <span className="text-[11px] px-2.5 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 font-mono font-medium">
-                        Stage 1: {result.stage1_status || "N/A"} | Stage 2: {result.stage2_status || "N/A"}
-                      </span>
-                    )}
-
                     <span className="text-[11px] font-mono text-slate-500 font-medium">
                       ({result.solve_time_ms} ms 계산)
                     </span>
                   </div>
                   <h3 className="text-sm font-bold text-slate-900 mt-1">
-                    OR-Tools CP-SAT 다주문 혼합 최적 배분 결과 ({result.objective_mode === "DELAY_THEN_COST" ? "납기 우선 사전식 최적화" : "종합 비용 최소화"})
+                    OR-Tools CP-SAT 다주문 혼합 최적 배분 결과
                   </h3>
                 </div>
               </div>
             </div>
 
             {/* Cost Cards Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               <div className="bg-blue-50/60 p-3.5 rounded-xl border border-blue-200 flex flex-col justify-between">
                 <span className="text-[10px] font-extrabold uppercase text-blue-800 tracking-wider">
                   총 의사결정 비용
@@ -310,17 +230,6 @@ export function TabMixedOptimization() {
                   ${result.total_decision_cost.toLocaleString()}
                 </span>
               </div>
-
-              {result.secondary_transport_cost !== undefined && result.secondary_transport_cost !== null && (
-                <div className="bg-purple-50/60 p-3.5 rounded-xl border border-purple-200 flex flex-col justify-between">
-                  <span className="text-[10px] font-extrabold uppercase text-purple-800 tracking-wider">
-                    순수 운송비(변동+고정)
-                  </span>
-                  <span className="text-base sm:text-lg font-black font-mono text-purple-900 mt-1">
-                    ${result.secondary_transport_cost.toLocaleString()}
-                  </span>
-                </div>
-              )}
 
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
                 <span className="text-[10px] font-bold uppercase text-slate-500 tracking-wider">
@@ -355,11 +264,6 @@ export function TabMixedOptimization() {
                 </span>
                 <span className="text-sm sm:text-base font-bold font-mono text-slate-800 mt-1">
                   {result.total_delay_pallet_days} P·일
-                  {result.best_delay_pallet_days !== undefined && result.best_delay_pallet_days !== null && (
-                    <span className="block text-[10px] font-normal text-purple-700">
-                      (최상위 최소지연: {result.best_delay_pallet_days}P·일)
-                    </span>
-                  )}
                 </span>
               </div>
             </div>

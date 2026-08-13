@@ -1,5 +1,6 @@
 from typing import List, Dict, Optional, Any, Literal
 from pydantic import BaseModel, Field, model_validator
+from urllib.parse import urlparse
 
 # Normalized Order Model
 class OrderModel(BaseModel):
@@ -97,8 +98,7 @@ class GeminiRiskAnalysis(BaseModel):
 class RiskAnalyzeRequest(BaseModel):
     input_mode: RiskInputMode = "KEYWORD"
     query: Optional[str] = Field(default="", max_length=3000)
-    article_title: Optional[str] = Field(default="", max_length=1000)
-    article_body: Optional[str] = Field(default="", max_length=60000)
+    article_url: Optional[str] = Field(default="", max_length=2048)
     preset_level: Optional[RiskGrade] = None
 
     @model_validator(mode="after")
@@ -106,8 +106,11 @@ class RiskAnalyzeRequest(BaseModel):
         if self.preset_level:
             return self
 
-        if self.input_mode == "ARTICLE" and not (self.article_body or "").strip():
-            raise ValueError("기사 본문 입력 모드에서는 article_body가 필요합니다.")
+        if self.input_mode == "ARTICLE":
+            article_url = (self.article_url or "").strip()
+            parsed = urlparse(article_url)
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+                raise ValueError("기사 URL 입력 모드에서는 올바른 http 또는 https URL이 필요합니다.")
 
         if self.input_mode == "KEYWORD" and not (self.query or "").strip():
             raise ValueError("키워드·상황 입력 모드에서는 query가 필요합니다.")
@@ -172,7 +175,6 @@ class PureCompareResponse(BaseModel):
 class MixedOptimizeRequest(BaseModel):
     selected_order_ids: Optional[List[str]] = None
     disruption_occurred: bool = True
-    objective_mode: Literal["TOTAL_DECISION_COST", "DELAY_THEN_COST"] = "TOTAL_DECISION_COST"
 
 class AllocationItem(BaseModel):
     order_id: str
@@ -202,15 +204,9 @@ class OptionActivation(BaseModel):
     fixed_cost: int
 
 class MixedOptimizeResponse(BaseModel):
-    status: str  # OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN, MODEL_INVALID, INVALID_ORDER_ID
+    status: str  # OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN, MODEL_INVALID
     is_optimal: bool
     solve_time_ms: float
-    objective_mode: str = "TOTAL_DECISION_COST"
-    stage1_status: Optional[str] = None
-    stage2_status: Optional[str] = None
-    best_delay_pallet_days: Optional[int] = None
-    secondary_transport_cost: Optional[int] = None
-    warnings: List[str] = Field(default_factory=list)
     total_variable_transport_cost: int
     total_fixed_cost: int
     total_delay_penalty: int
@@ -223,7 +219,6 @@ class MixedOptimizeResponse(BaseModel):
     option_activations: List[OptionActivation]
     facts: List[str]
     explanation: str
-    error: Optional[str] = None
 
 # General Explain Request
 class ExplainRequest(BaseModel):

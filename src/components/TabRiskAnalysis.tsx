@@ -11,6 +11,7 @@ import {
   HelpCircle,
   ArrowRight,
   Database,
+  Link,
 } from "lucide-react";
 import { RiskAnalyzeResponse } from "../types";
 import { analyzeRisk } from "../api/client";
@@ -21,8 +22,7 @@ type RiskLevel = "HIGH" | "MEDIUM" | "LOW";
 export function TabRiskAnalysis() {
   const [inputMode, setInputMode] = useState<ManualInputMode>("KEYWORD");
   const [query, setQuery] = useState("");
-  const [articleTitle, setArticleTitle] = useState("");
-  const [articleBody, setArticleBody] = useState("");
+  const [articleUrl, setArticleUrl] = useState("");
   const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<RiskAnalyzeResponse | null>(null);
@@ -50,7 +50,7 @@ export function TabRiskAnalysis() {
   ];
 
   const canAnalyze = selectedPreset !== null ||
-    (inputMode === "KEYWORD" ? query.trim().length > 0 : articleBody.trim().length > 0);
+    (inputMode === "KEYWORD" ? query.trim().length > 0 : articleUrl.trim().length > 0);
 
   const switchInputMode = (mode: ManualInputMode) => {
     setInputMode(mode);
@@ -60,8 +60,18 @@ export function TabRiskAnalysis() {
 
   const handleAnalyze = async () => {
     if (!canAnalyze) {
-      setError(inputMode === "ARTICLE" ? "분석할 기사 본문을 입력하세요." : "분석할 키워드·상황을 입력하세요.");
+      setError(inputMode === "ARTICLE" ? "분석할 기사 URL을 입력하세요." : "분석할 키워드·상황을 입력하세요.");
       return;
+    }
+
+    if (inputMode === "ARTICLE") {
+      try {
+        const url = new URL(articleUrl.trim());
+        if (!['http:', 'https:'].includes(url.protocol)) throw new Error();
+      } catch {
+        setError("http:// 또는 https://로 시작하는 올바른 기사 URL을 입력하세요.");
+        return;
+      }
     }
 
     setLoading(true);
@@ -77,8 +87,7 @@ export function TabRiskAnalysis() {
           : inputMode === "ARTICLE"
           ? {
               input_mode: "ARTICLE",
-              article_title: articleTitle || undefined,
-              article_body: articleBody,
+              article_url: articleUrl.trim(),
             }
           : {
               input_mode: "KEYWORD",
@@ -125,8 +134,7 @@ export function TabRiskAnalysis() {
                   setSelectedPreset(p.level);
                   setInputMode("KEYWORD");
                   setQuery(p.queryText);
-                  setArticleTitle("");
-                  setArticleBody("");
+                  setArticleUrl("");
                 }}
                 className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col justify-between cursor-pointer ${
                   selectedPreset === p.level
@@ -171,7 +179,7 @@ export function TabRiskAnalysis() {
                   : "text-slate-500 hover:text-slate-800"
               }`}
             >
-              기사 본문 직접 입력
+              기사 URL 입력
             </button>
           </div>
         </div>
@@ -196,37 +204,30 @@ export function TabRiskAnalysis() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3 mb-5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                기사 제목 (선택)
-              </label>
+          <div className="mb-5">
+            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              기사 URL
+            </label>
+            <div className="relative">
+              <Link className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                type="text"
-                value={articleTitle}
+                type="url"
+                value={articleUrl}
                 onChange={(e) => {
-                  setArticleTitle(e.target.value);
+                  setArticleUrl(e.target.value);
                   setSelectedPreset(null);
                 }}
-                placeholder="기사 제목을 입력하세요"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                기사 본문
-              </label>
-              <textarea
-                value={articleBody}
-                onChange={(e) => {
-                  setArticleBody(e.target.value);
-                  setSelectedPreset(null);
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canAnalyze && !loading) handleAnalyze();
                 }}
-                rows={9}
-                placeholder="분석할 기사 본문 또는 필요한 발췌문을 붙여넣으세요. URL만 입력하면 본문을 자동 수집하지 않습니다."
-                className="w-full resize-y bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-3 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all leading-relaxed"
+                placeholder="https://example.com/news/article"
+                autoComplete="url"
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 focus:bg-white transition-all"
               />
             </div>
+            <p className="mt-1.5 text-[11px] text-slate-500">
+              공개적으로 접근 가능한 기사 URL을 입력하면 서버가 제목과 본문을 가져와 분석합니다.
+            </p>
           </div>
         )}
 
