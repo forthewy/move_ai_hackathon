@@ -95,10 +95,22 @@ export interface OptionActivation {
   fixed_cost: number;
 }
 
+export interface MixedOptimizeRequest {
+  selected_order_ids?: string[];
+  disruption_occurred?: boolean;
+  objective_mode?: "TOTAL_DECISION_COST" | "DELAY_THEN_COST";
+}
+
 export interface MixedOptimizeResponse {
   status: string;
   is_optimal: boolean;
   solve_time_ms: number;
+  objective_mode: "TOTAL_DECISION_COST" | "DELAY_THEN_COST";
+  stage1_status?: string | null;
+  stage2_status?: string | null;
+  best_delay_pallet_days?: number | null;
+  secondary_transport_cost?: number | null;
+  warnings?: string[];
   total_variable_transport_cost: number;
   total_fixed_cost: number;
   total_delay_penalty: number;
@@ -111,4 +123,5 @@ export interface MixedOptimizeResponse {
   option_activations: OptionActivation[];
   facts: string[];
   explanation: string;
+  error?: string;
 }

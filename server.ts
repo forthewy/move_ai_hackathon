@@ -65,6 +65,10 @@ app.post("/api/pure/compare", async (req, res) => {
 
 app.post("/api/mixed/optimize", async (req, res) => {
   const result = await runPythonBridge("mixed_optimize", req.body);
+  if (result?.error) {
+    const statusCode = result.status === "INVALID_ORDER_ID" ? 400 : 500;
+    return res.status(statusCode).json(result);
+  }
   res.json(result);
 });
 
