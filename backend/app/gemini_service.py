@@ -69,7 +69,7 @@ def generate_structured_with_gemini(
 
 
 def generate_text_with_gemini(prompt: str, system_instruction: Optional[str] = None) -> Optional[str]:
-    """기능 2 설명 생성에서 사용 중인 기존 자유 텍스트 호출을 유지한다."""
+    """사용자가 결과 해설을 요청했을 때만 자유 텍스트를 생성한다."""
 
     try:
         api_key = _get_api_key()

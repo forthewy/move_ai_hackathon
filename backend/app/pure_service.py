@@ -9,7 +9,6 @@ from .schemas import (
     PureOptionResult,
 )
 from .data_loader import load_data
-from .gemini_service import generate_text_with_gemini
 
 def compare_pure_options(req: PureCompareRequest) -> PureCompareResponse:
     orders, inventory, options_master, config = load_data()
@@ -104,23 +103,14 @@ def compare_pure_options(req: PureCompareRequest) -> PureCompareResponse:
             if r.option_id == recommended_id:
                 r.is_recommended = True
 
-    # Generate Gemini or template explanation
+    # 계산 응답은 결정론적으로 생성한다. AI 해설은 /api/explain에서 사용자가 요청할 때만 생성한다.
     rec_opt = next((r for r in results if r.is_recommended), None)
     if rec_opt:
-        prompt = f"""
-주문 {order.order_id} ({order.destination_plant}, 물량 {order.qty} pallet, 일일 지연패널티 ${delay_penalty}/pallet·day)의 Pure 대안 비교 결과:
-- 추천 대안: {rec_opt.option_name} (총 의사결정 비용 ${rec_opt.decision_cost:,})
-- 지연일수: {rec_opt.delay_days}일, 변동 운송비: ${rec_opt.variable_transport_cost:,}, 고정비: ${rec_opt.fixed_activation_cost:,}, 지연 패널티: ${rec_opt.delay_penalty:,}
-
-지연 패널티 변동에 따른 추천 대안 선정 이유 및 비용 트레이드오프를 2~4문장으로 명확히 설명하라. 숫자는 주어진 결과만 사용하라.
-"""
-        explanation = generate_text_with_gemini(prompt)
-        if not explanation:
-            explanation = (
-                f"일일 지연 패널티 ${delay_penalty}/pallet·day 적용 시, {rec_opt.option_name} 대안이 "
-                f"총 의사결정 비용 ${rec_opt.decision_cost:,}로 가장 경제적입니다. "
-                f"지연일수({rec_opt.delay_days}일)에 따른 패널티와 운송비 및 고정비의 합산 비용 트레이드오프를 반영한 결과입니다."
-            )
+        explanation = (
+            f"일일 지연 패널티 ${delay_penalty}/pallet·day 적용 시, {rec_opt.option_name} 대안이 "
+            f"총 의사결정 비용 ${rec_opt.decision_cost:,}로 가장 경제적입니다. "
+            f"지연일수({rec_opt.delay_days}일)에 따른 패널티와 운송비 및 고정비의 합산 비용 트레이드오프를 반영한 결과입니다."
+        )
     else:
         explanation = "수용 가능한 대안이 없습니다."
 

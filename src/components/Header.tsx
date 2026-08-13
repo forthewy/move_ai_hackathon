@@ -18,14 +18,14 @@ export function Header({ activeTab, setActiveTab }: HeaderProps) {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-                  KD 물류 차질 대응 AI 의사결정 지원
+                  KD 부품 물류 차질 대응 지원
                 </h1>
                 <span className="text-[10px] font-bold tracking-wider uppercase bg-blue-500/20 border border-blue-400/30 text-blue-300 px-2.5 py-0.5 rounded-full">
                   MOVE AI Challenge 2026
                 </span>
               </div>
               <p className="text-xs text-slate-300 mt-0.5 font-medium">
-                홍해·수에즈 회랑 정성적 차질 위험 분석 및 OR-Tools CP-SAT 최적 물량 배분
+                홍해·수에즈 위험 감지부터 운송 대안 비교와 물량 배분까지
               </p>
             </div>
           </div>
@@ -41,7 +41,7 @@ export function Header({ activeTab, setActiveTab }: HeaderProps) {
               }`}
             >
               <AlertTriangle className="w-4 h-4" />
-              <span>탭 A. 차질 위험 분석</span>
+              <span>1. 차질 위험 분석</span>
             </button>
 
             <button
@@ -53,7 +53,7 @@ export function Header({ activeTab, setActiveTab }: HeaderProps) {
               }`}
             >
               <Layers className="w-4 h-4" />
-              <span>탭 B. Pure 대안 비교</span>
+              <span>2. 단일 대안 비교</span>
             </button>
 
             <button
@@ -65,7 +65,7 @@ export function Header({ activeTab, setActiveTab }: HeaderProps) {
               }`}
             >
               <GitMerge className="w-4 h-4" />
-              <span>탭 C. Mixed 최적 배분</span>
+              <span>3. 혼합 물량 배분</span>
             </button>
           </nav>
         </div>

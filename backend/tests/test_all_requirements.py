@@ -154,7 +154,8 @@ def test_12_error_handling():
     assert res.order is not None
 
     res_mixed = optimize_mixed_allocation(MixedOptimizeRequest(selected_order_ids=["INVALID_ID"]))
-    assert res_mixed.status in ["OPTIMAL", "FEASIBLE"]
+    assert res_mixed.status == "INVALID_ORDER_ID"
+    assert res_mixed.allocations == []
 
 def test_13_disruption_occurred_toggle():
     # 1) When disruption_occurred = False in Pure compare, WAIT arrival day must be baseline_arrival_day (30) and delay = 0
@@ -180,3 +181,179 @@ def test_13_disruption_occurred_toggle():
     assert res_mixed_no_disruption.total_decision_cost < res_mixed_disruption.total_decision_cost
     # Under normal conditions, no order should suffer any delays since WAIT (arrival Day 30) satisfies all required arrivals (Day 30)
     assert res_mixed_no_disruption.total_delay_pallet_days == 0
+
+
+def test_14_default_objective_mode():
+    res = optimize_mixed_allocation(MixedOptimizeRequest())
+    assert res.objective_mode == "TOTAL_DECISION_COST"
+
+
+def test_15_objective_mode_policy_difference():
+    from backend.app.schemas import OrderModel
+    from backend.app.mixed_service import solve_total_decision_cost, solve_delay_then_cost
+
+    test_order = OrderModel(
+        order_id="TEST-POLICY-01",
+        destination_plant="HMMC_CZ",
+        part_id="PART_MCU",
+        qty=1,
+        required_arrival_day=1,
+        delay_penalty_per_pallet_day=10,
+    )
+    _, inventory, options_master, config = load_data()
+
+    res_cost = solve_total_decision_cost(
+        [test_order], inventory, options_master, config, disruption_occurred=True
+    )
+    assert res_cost.status == "OPTIMAL"
+    wait_alloc = next((i for i in res_cost.allocations if i.option_id == "WAIT"), None)
+    assert wait_alloc is not None and wait_alloc.allocated_qty == 1
+
+    res_delay = solve_delay_then_cost(
+        [test_order], inventory, options_master, config, disruption_occurred=True
+    )
+    assert res_delay.status == "OPTIMAL"
+    assert res_delay.best_delay_pallet_days == 3
+    air_alloc = next((i for i in res_delay.allocations if i.option_id == "AIR"), None)
+    assert air_alloc is not None and air_alloc.allocated_qty == 1
+
+
+def test_16_stage2_tie_breaking():
+    from backend.app.schemas import OrderModel, OptionItemModel, InventoryItemModel, AppConfigModel
+    from backend.app.mixed_service import solve_delay_then_cost
+
+    test_order = OrderModel(
+        order_id="TEST-TIE-01",
+        destination_plant="PLANT_X",
+        part_id="PART_A",
+        qty=2,
+        required_arrival_day=10,
+        delay_penalty_per_pallet_day=500,
+    )
+    custom_options = {
+        "PLANT_X": {
+            "WAIT": OptionItemModel(
+                option_id="WAIT", option_name="Wait", passes_red_sea=True,
+                arrival_day=30, baseline_arrival_day=30, disruption_delay=0,
+                fixed_cost=0, unit_cost_per_pallet=1000, available=True,
+            ),
+            "ALTERNATIVE_PLAN": OptionItemModel(
+                option_id="ALTERNATIVE_PLAN", option_name="Alt Expensive", passes_red_sea=False,
+                arrival_day=4, baseline_arrival_day=4, disruption_delay=0,
+                fixed_cost=5000, unit_cost_per_pallet=10000, available=True,
+            ),
+            "STOCK_TRANSFER": OptionItemModel(
+                option_id="STOCK_TRANSFER", option_name="Stock Cheap", passes_red_sea=False,
+                arrival_day=4, baseline_arrival_day=4, disruption_delay=0,
+                fixed_cost=500, unit_cost_per_pallet=1000, available=True,
+            ),
+            "AIR": OptionItemModel(
+                option_id="AIR", option_name="Air", passes_red_sea=False,
+                arrival_day=4, baseline_arrival_day=4, disruption_delay=0,
+                fixed_cost=2000, unit_cost_per_pallet=20000, available=True,
+            ),
+        }
+    }
+    custom_inventory = {
+        "PLANT_X": {
+            "PART_A": InventoryItemModel(
+                current_stock=10, min_safety_stock=0, transferable_qty=10
+            )
+        }
+    }
+    config = AppConfigModel(air_total_capacity=50, alternative_plan_total_capacity=50)
+
+    res = solve_delay_then_cost(
+        [test_order], custom_inventory, custom_options, config, disruption_occurred=True
+    )
+    assert res.status == "OPTIMAL"
+    assert res.stage1_status == "OPTIMAL"
+    assert res.stage2_status == "OPTIMAL"
+    assert res.best_delay_pallet_days == 0
+    cheap_alloc = next(
+        (i for i in res.allocations if i.option_id == "STOCK_TRANSFER"), None
+    )
+    assert cheap_alloc is not None
+    assert cheap_alloc.allocated_qty == 2
+
+
+def test_17_constraint_preservation_across_both_modes():
+    orders, _, _, config = load_data()
+    for mode in ["TOTAL_DECISION_COST", "DELAY_THEN_COST"]:
+        res = optimize_mixed_allocation(
+            MixedOptimizeRequest(objective_mode=mode, disruption_occurred=True)
+        )
+        assert res.status in ["OPTIMAL", "FEASIBLE"]
+
+        for order in orders:
+            allocated = sum(
+                item.allocated_qty
+                for item in res.allocations
+                if item.order_id == order.order_id
+            )
+            assert allocated == order.qty
+
+        assert res.air_usage.used_qty <= config.air_total_capacity
+        assert (
+            res.alternative_plan_usage.used_qty
+            <= config.alternative_plan_total_capacity
+        )
+
+
+def test_18_representative_factories_integration():
+    orders, _, _, _ = load_data()
+    assert {"HMMC_CZ", "KASK_SK"} <= {o.destination_plant for o in orders}
+
+    res = optimize_mixed_allocation(
+        MixedOptimizeRequest(
+            objective_mode="TOTAL_DECISION_COST",
+            disruption_occurred=True,
+        )
+    )
+    assert res.status in ["OPTIMAL", "FEASIBLE"]
+    assert {"HMMC_CZ", "KASK_SK"} <= {
+        item.destination_plant for item in res.allocations
+    }
+
+
+def test_19_disruption_toggle_is_preserved_in_both_objective_modes():
+    for mode in ["TOTAL_DECISION_COST", "DELAY_THEN_COST"]:
+        normal = optimize_mixed_allocation(
+            MixedOptimizeRequest(
+                disruption_occurred=False,
+                objective_mode=mode,
+            )
+        )
+        disrupted = optimize_mixed_allocation(
+            MixedOptimizeRequest(
+                disruption_occurred=True,
+                objective_mode=mode,
+            )
+        )
+
+        assert normal.status in ["OPTIMAL", "FEASIBLE"]
+        assert disrupted.status in ["OPTIMAL", "FEASIBLE"]
+        assert normal.total_delay_pallet_days == 0
+        assert disrupted.total_delay_pallet_days >= normal.total_delay_pallet_days
+
+
+def test_20_optimization_does_not_call_gemini_automatically(monkeypatch):
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Pure/Mixed calculation must not call Gemini automatically")
+
+    monkeypatch.setattr(
+        "backend.app.pure_service.generate_text_with_gemini",
+        fail_if_called,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.mixed_service.generate_text_with_gemini",
+        fail_if_called,
+        raising=False,
+    )
+
+    pure = compare_pure_options(PureCompareRequest(order_id="ORD-CZ-01"))
+    mixed = optimize_mixed_allocation(MixedOptimizeRequest())
+
+    assert pure.recommended_option_id is not None
+    assert mixed.status in ["OPTIMAL", "FEASIBLE"]
