@@ -155,3 +155,28 @@ def test_12_error_handling():
 
     res_mixed = optimize_mixed_allocation(MixedOptimizeRequest(selected_order_ids=["INVALID_ID"]))
     assert res_mixed.status in ["OPTIMAL", "FEASIBLE"]
+
+def test_13_disruption_occurred_toggle():
+    # 1) When disruption_occurred = False in Pure compare, WAIT arrival day must be baseline_arrival_day (30) and delay = 0
+    res_no_disruption = compare_pure_options(PureCompareRequest(order_id="ORD-CZ-01", disruption_occurred=False))
+    wait_opt = next(r for r in res_no_disruption.options_results if r.option_id == "WAIT")
+    assert wait_opt.arrival_day == 30
+    assert wait_opt.delay_days == 0
+
+    # When disruption_occurred = True, WAIT arrival day must be baseline_arrival_day + disruption_delay (30 + 12 = 42) and delay = 12
+    res_disruption = compare_pure_options(PureCompareRequest(order_id="ORD-CZ-01", disruption_occurred=True))
+    wait_opt_disrupted = next(r for r in res_disruption.options_results if r.option_id == "WAIT")
+    assert wait_opt_disrupted.arrival_day == 42
+    assert wait_opt_disrupted.delay_days == 12
+
+    # 2) When disruption_occurred = False in Mixed optimize, the total cost must be lower than when disruption_occurred = True
+    res_mixed_no_disruption = optimize_mixed_allocation(MixedOptimizeRequest(disruption_occurred=False))
+    assert res_mixed_no_disruption.status in ["OPTIMAL", "FEASIBLE"]
+    
+    res_mixed_disruption = optimize_mixed_allocation(MixedOptimizeRequest(disruption_occurred=True))
+    assert res_mixed_disruption.status in ["OPTIMAL", "FEASIBLE"]
+
+    # No-disruption cost must be lower than disruption cost
+    assert res_mixed_no_disruption.total_decision_cost < res_mixed_disruption.total_decision_cost
+    # Under normal conditions, no order should suffer any delays since WAIT (arrival Day 30) satisfies all required arrivals (Day 30)
+    assert res_mixed_no_disruption.total_delay_pallet_days == 0

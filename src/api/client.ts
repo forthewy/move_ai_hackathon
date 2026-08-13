@@ -34,6 +34,7 @@ export async function analyzeRisk(payload: {
 export async function comparePureOptions(payload: {
   order_id: string;
   delay_penalty_per_pallet_day_override?: number;
+  disruption_occurred?: boolean;
 }): Promise<PureCompareResponse> {
   const res = await fetch("/api/pure/compare", {
     method: "POST",
@@ -46,6 +47,7 @@ export async function comparePureOptions(payload: {
 
 export async function optimizeMixedAllocation(payload: {
   selected_order_ids?: string[];
+  disruption_occurred?: boolean;
 }): Promise<MixedOptimizeResponse> {
   const res = await fetch("/api/mixed/optimize", {
     method: "POST",

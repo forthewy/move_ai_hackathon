@@ -25,6 +25,7 @@ export function TabMixedOptimization() {
   const [result, setResult] = useState<MixedOptimizeResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [disruptionOccurred, setDisruptionOccurred] = useState<boolean>(true);
 
   useEffect(() => {
     fetchOrders()
@@ -41,6 +42,7 @@ export function TabMixedOptimization() {
     try {
       const res = await optimizeMixedAllocation({
         selected_order_ids: selectedOrderIds.length > 0 ? selectedOrderIds : undefined,
+        disruption_occurred: disruptionOccurred,
       });
       setResult(res);
     } catch (err: any) {
@@ -98,6 +100,25 @@ export function TabMixedOptimization() {
                 <span>OR-Tools CP-SAT 최적 배분 실행</span>
               </>
             )}
+          </button>
+        </div>
+
+        {/* Disruption Status Toggle */}
+        <div className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 mt-4">
+          <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <AlertTriangle className="w-4 h-4 text-red-600" />
+            <span>홍해·수에즈 물류 차질 발생 상태 (Disruption):</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setDisruptionOccurred(!disruptionOccurred)}
+            className={`text-[11px] px-3.5 py-1.5 rounded-md font-bold transition-all cursor-pointer ${
+              disruptionOccurred
+                ? "bg-red-100 border border-red-300 text-red-800"
+                : "bg-emerald-100 border border-emerald-300 text-emerald-800"
+            }`}
+          >
+            {disruptionOccurred ? "🔴 차질 발생 (지연 12일 가산 상태)" : "🟢 정상 통항 (정상 소요일 기준 최적화)"}
           </button>
         </div>
 

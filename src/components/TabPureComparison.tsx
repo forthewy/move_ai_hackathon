@@ -25,6 +25,7 @@ export function TabPureComparison() {
   const [result, setResult] = useState<PureCompareResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [disruptionOccurred, setDisruptionOccurred] = useState<boolean>(true);
 
   // Load orders on mount
   useEffect(() => {
@@ -40,13 +41,14 @@ export function TabPureComparison() {
   }, []);
 
   // Update comparison whenever order or slider changes
-  const runComparison = async (orderId: string, penaltyVal?: number) => {
+  const runComparison = async (orderId: string, penaltyVal?: number, disruption?: boolean) => {
     setLoading(true);
     setError(null);
     try {
       const res = await comparePureOptions({
         order_id: orderId,
         delay_penalty_per_pallet_day_override: useOverride ? penaltyVal : undefined,
+        disruption_occurred: disruption,
       });
       setResult(res);
     } catch (err: any) {
@@ -58,9 +60,9 @@ export function TabPureComparison() {
 
   useEffect(() => {
     if (selectedOrderId) {
-      runComparison(selectedOrderId, delayPenaltyOverride);
+      runComparison(selectedOrderId, delayPenaltyOverride, disruptionOccurred);
     }
-  }, [selectedOrderId, delayPenaltyOverride, useOverride]);
+  }, [selectedOrderId, delayPenaltyOverride, useOverride, disruptionOccurred]);
 
   const currentOrder = orders.find((o) => o.order_id === selectedOrderId);
 
@@ -100,6 +102,25 @@ export function TabPureComparison() {
                 </option>
               ))}
             </select>
+
+            {/* Disruption Status Toggle */}
+            <div className="mt-3 flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">
+              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <AlertCircle className="w-4 h-4 text-red-600" />
+                <span>물류 차질 발생 상태 (Disruption):</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setDisruptionOccurred(!disruptionOccurred)}
+                className={`text-[11px] px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                  disruptionOccurred
+                    ? "bg-red-100 border border-red-300 text-red-800"
+                    : "bg-emerald-100 border border-emerald-300 text-emerald-800"
+                }`}
+              >
+                {disruptionOccurred ? "🔴 차질 발생 (지연 가산)" : "🟢 정상 운송 (지연 없음)"}
+              </button>
+            </div>
 
             {currentOrder && (
               <div className="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-xs space-y-1 text-slate-700">

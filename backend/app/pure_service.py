@@ -65,7 +65,13 @@ def compare_pure_options(req: PureCompareRequest) -> PureCompareResponse:
         if not opt.available and not unavail_reason:
             unavail_reason = "대안 마스터 설정상 비가용 상태"
 
-        arrival_day = opt.arrival_day
+        # Compute dynamic arrival day based on disruption toggle
+        disruption = req.disruption_occurred if req.disruption_occurred is not None else True
+        arrival_day = (
+            (opt.baseline_arrival_day + opt.disruption_delay)
+            if (disruption and opt.baseline_arrival_day is not None and opt.disruption_delay is not None)
+            else (opt.baseline_arrival_day if opt.baseline_arrival_day is not None else opt.arrival_day)
+        )
         delay_days = max(0, arrival_day - order.required_arrival_day)
         var_cost = order.qty * opt.unit_cost_per_pallet
         fixed_cost = opt.fixed_cost

@@ -60,7 +60,15 @@ def optimize_mixed_allocation(req: MixedOptimizeRequest) -> MixedOptimizeRespons
                 # Force x[o_idx, a] == 0 if option unavailable
                 model.Add(x[o_idx, a] == 0)
 
-            arrival_day = opt.arrival_day if opt else 999
+            disruption = req.disruption_occurred if req.disruption_occurred is not None else True
+            if opt:
+                arrival_day = (
+                    (opt.baseline_arrival_day + opt.disruption_delay)
+                    if (disruption and opt.baseline_arrival_day is not None and opt.disruption_delay is not None)
+                    else (opt.baseline_arrival_day if opt.baseline_arrival_day is not None else opt.arrival_day)
+                )
+            else:
+                arrival_day = 999
             delay = max(0, arrival_day - o.required_arrival_day)
             delay_days_dict[o_idx, a] = delay
 
@@ -201,7 +209,15 @@ def optimize_mixed_allocation(req: MixedOptimizeRequest) -> MixedOptimizeRespons
             qty_val = int(solver.Value(x[o_idx, a]))
             if qty_val > 0:
                 opt = plant_opts.get(a)
-                arr_day = opt.arrival_day if opt else 999
+                if opt:
+                    disruption = req.disruption_occurred if req.disruption_occurred is not None else True
+                    arr_day = (
+                        (opt.baseline_arrival_day + opt.disruption_delay)
+                        if (disruption and opt.baseline_arrival_day is not None and opt.disruption_delay is not None)
+                        else (opt.baseline_arrival_day if opt.baseline_arrival_day is not None else opt.arrival_day)
+                    )
+                else:
+                    arr_day = 999
                 delay = delay_days_dict[o_idx, a]
                 var_c = qty_val * (opt.unit_cost_per_pallet if opt else 0)
                 del_c = qty_val * delay * o.delay_penalty_per_pallet_day

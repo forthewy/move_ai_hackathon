@@ -91,6 +91,8 @@ def normalize_options(raw_options: Dict[str, Dict[str, Any]]) -> Dict[str, Dict[
                 unit_cost_per_pallet=int(opt_data.get("unit_cost_per_pallet", 0)),
                 max_qty=max_qty_val,
                 available=bool(opt_data.get("available", True)),
+                baseline_arrival_day=int(opt_data.get("baseline_arrival_day", arrival_day)),
+                disruption_delay=int(opt_data.get("disruption_delay", 0)),
             )
     return normalized
 

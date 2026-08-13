@@ -24,6 +24,8 @@ class OptionItemModel(BaseModel):
     unit_cost_per_pallet: int
     max_qty: Optional[int] = None
     available: bool
+    baseline_arrival_day: Optional[int] = 30
+    disruption_delay: Optional[int] = 0
 
 # Inventory Item Model
 class InventoryItemModel(BaseModel):
@@ -67,6 +69,7 @@ class RiskAnalyzeResponse(BaseModel):
 class PureCompareRequest(BaseModel):
     order_id: str
     delay_penalty_per_pallet_day_override: Optional[int] = None
+    disruption_occurred: bool = True
 
 class PureOptionResult(BaseModel):
     option_id: str
@@ -90,6 +93,7 @@ class PureCompareResponse(BaseModel):
 # Mixed Optimize Request/Response
 class MixedOptimizeRequest(BaseModel):
     selected_order_ids: Optional[List[str]] = None
+    disruption_occurred: bool = True
 
 class AllocationItem(BaseModel):
     order_id: str
