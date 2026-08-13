@@ -18,17 +18,26 @@ export async function fetchOptions(): Promise<any> {
 }
 
 export async function analyzeRisk(payload: {
+  input_mode: "KEYWORD" | "ARTICLE";
   query?: string;
-  user_prompt?: string;
-  preset_level?: string;
+  article_title?: string;
+  article_body?: string;
+  preset_level?: "LOW" | "MEDIUM" | "HIGH";
 }): Promise<RiskAnalyzeResponse> {
   const res = await fetch("/api/risk/analyze", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to analyze risk");
-  return res.json();
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data?.detail || "Failed to analyze risk");
+  }
+  if (data?.error) {
+    throw new Error(data.error);
+  }
+  return data;
 }
 
 export async function comparePureOptions(payload: {

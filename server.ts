@@ -2,6 +2,10 @@ import express from "express";
 import path from "path";
 import { execFile } from "child_process";
 import { createServer as createViteServer } from "vite";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
+dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;

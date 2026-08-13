@@ -21,11 +21,23 @@ export interface PriorityShipment {
   required_arrival_date: string;
 }
 
+export type RiskInputMode = "KEYWORD" | "ARTICLE" | "PRESET";
+export type ShippingRelevance = "DIRECT" | "INDIRECT" | "NONE";
+
 export interface RiskAnalyzeResponse {
+  input_mode: RiskInputMode;
   situation_summary: string;
+  analysis_explanation: string;
   risk_grade: "LOW" | "MEDIUM" | "HIGH";
+  shipping_relevance: ShippingRelevance;
+  event_type: string;
+  commercial_shipping_threat: boolean;
+  actual_commercial_ship_attack: boolean;
+  carrier_operation_change: boolean;
+  official_transit_restriction: boolean;
   priority_shipments: PriorityShipment[];
   evidence_summary: string[];
+  evidence_spans: string[];
   uncertainty: string[];
   preparation_actions: string[];
   is_synthetic: boolean;

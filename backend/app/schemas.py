@@ -1,5 +1,5 @@
-from typing import List, Dict, Optional, Any
-from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any, Literal
+from pydantic import BaseModel, Field, model_validator
 
 # Normalized Order Model
 class OrderModel(BaseModel):
@@ -41,11 +41,79 @@ class AppConfigModel(BaseModel):
     quantity_unit: str = "pallet"
     time_unit: str = "day"
 
+RiskGrade = Literal["LOW", "MEDIUM", "HIGH"]
+ShippingRelevance = Literal["DIRECT", "INDIRECT", "NONE"]
+RiskInputMode = Literal["KEYWORD", "ARTICLE"]
+
+
+class GeminiRiskAnalysis(BaseModel):
+    """Gemini가 기사 또는 상황 문장에서 직접 생성하는 구조화 분석 결과."""
+
+    shipping_relevance: ShippingRelevance = Field(
+        description=(
+            "홍해·수에즈 상업 해운과의 관련성. 직접적인 상선 위협·공격·운영 변경은 DIRECT, "
+            "지역 긴장처럼 간접 영향만 있으면 INDIRECT, 무관하면 NONE."
+        )
+    )
+    event_type: str = Field(
+        description="입력에서 식별한 사건 유형을 짧은 영문 대문자 코드로 표현. 예: MARITIME_ATTACK_WARNING"
+    )
+    risk_grade: RiskGrade = Field(
+        description="제공된 입력의 증거만 근거로 판정한 홍해·수에즈 해상운송 위험등급"
+    )
+    situation_summary: str = Field(
+        description="물류 담당자가 바로 이해할 수 있는 한국어 상황 요약 2~4문장"
+    )
+    analysis_explanation: str = Field(
+        description="왜 해당 위험등급으로 판단했는지 증거의 직접성과 미확정 사항을 연결한 한국어 설명"
+    )
+    commercial_shipping_threat: bool = Field(
+        description="상선 또는 상업 해운에 대한 직접적인 위협·공격 경고가 입력에 명시됐는지"
+    )
+    actual_commercial_ship_attack: bool = Field(
+        description="상선을 대상으로 한 실제 공격 또는 공격 시도가 입력에 명시됐는지"
+    )
+    carrier_operation_change: bool = Field(
+        description="선사의 운항 중단·우회·서비스 변경이 입력에 공식적으로 명시됐는지"
+    )
+    official_transit_restriction: bool = Field(
+        description="정부·군·운하 당국 등의 공식 통항 제한 또는 폐쇄 조치가 입력에 명시됐는지"
+    )
+    evidence_summary: List[str] = Field(
+        description="위험등급을 뒷받침하는 핵심 근거를 한국어로 요약한 목록"
+    )
+    evidence_spans: List[str] = Field(
+        description="입력 원문에서 그대로 가져온 짧은 근거 구절. 직접 인용할 구절이 없으면 빈 목록"
+    )
+    uncertainty: List[str] = Field(
+        description="입력만으로 확인할 수 없는 내용. 발생확률·지속기간·종료일을 임의 생성하지 않음"
+    )
+    preparation_actions: List[str] = Field(
+        description="자동 변경이 아닌 사전 확인·문의·견적 확보 중심의 준비 행동"
+    )
+
+
 # Risk Analysis Request/Response
 class RiskAnalyzeRequest(BaseModel):
-    query: Optional[str] = ""
-    user_prompt: Optional[str] = ""
-    preset_level: Optional[str] = None  # "HIGH", "MEDIUM", "LOW"
+    input_mode: RiskInputMode = "KEYWORD"
+    query: Optional[str] = Field(default="", max_length=3000)
+    article_title: Optional[str] = Field(default="", max_length=1000)
+    article_body: Optional[str] = Field(default="", max_length=60000)
+    preset_level: Optional[RiskGrade] = None
+
+    @model_validator(mode="after")
+    def validate_analysis_input(self):
+        if self.preset_level:
+            return self
+
+        if self.input_mode == "ARTICLE" and not (self.article_body or "").strip():
+            raise ValueError("기사 본문 입력 모드에서는 article_body가 필요합니다.")
+
+        if self.input_mode == "KEYWORD" and not (self.query or "").strip():
+            raise ValueError("키워드·상황 입력 모드에서는 query가 필요합니다.")
+
+        return self
+
 
 class PriorityShipment(BaseModel):
     order_id: str
@@ -56,11 +124,21 @@ class PriorityShipment(BaseModel):
     planned_departure_date: str
     required_arrival_date: str
 
+
 class RiskAnalyzeResponse(BaseModel):
+    input_mode: Literal["KEYWORD", "ARTICLE", "PRESET"]
     situation_summary: str
-    risk_grade: str  # "LOW", "MEDIUM", "HIGH"
+    analysis_explanation: str
+    risk_grade: RiskGrade
+    shipping_relevance: ShippingRelevance
+    event_type: str
+    commercial_shipping_threat: bool
+    actual_commercial_ship_attack: bool
+    carrier_operation_change: bool
+    official_transit_restriction: bool
     priority_shipments: List[PriorityShipment]
     evidence_summary: List[str]
+    evidence_spans: List[str]
     uncertainty: List[str]
     preparation_actions: List[str]
     is_synthetic: bool = False
