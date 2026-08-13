@@ -14,7 +14,6 @@ from .schemas import (
     OptionActivation,
 )
 from .data_loader import load_data
-from .gemini_service import generate_text_with_gemini
 
 
 def effective_arrival_day(opt: Optional[OptionItemModel], disruption_occurred: bool) -> int:
@@ -317,53 +316,19 @@ def extract_solution_response(
 
     detail_str = "; ".join(allocated_options_desc) if allocated_options_desc else "배정 물량 없음"
 
+    # 계산 응답은 결정론적으로 생성한다. AI 해설은 /api/explain에서 사용자가 요청할 때만 생성한다.
     if objective_mode == "DELAY_THEN_COST":
-        gemini_prompt = f"""
-다음은 OR-Tools CP-SAT 최적화 (납기 우선 사전식 최적화 policy) 계산 결과다:
-- Solver 상태: Stage 1={stage1_status}, Stage 2={stage2_status} (최종 Status={status_str})
-- 최소 달성 지연: {total_delay_pallet_days} pallet·일
-- 2단계 최적 운송비용 (변동비+고정비): ${secondary_transport_cost:,} (변동비 ${total_var_cost:,}, 고정비 ${total_fixed_cost:,})
-- 참고용 지연 패널티: ${total_delay_penalty:,} (총 의사결정비용: ${total_decision_cost:,})
-- 대안별 배분 명세: [{detail_str}]
-
-3~5문장으로 다음을 설명하라:
-1. 총 지연 pallet-day({total_delay_pallet_days}일)를 최우선 1순위로 최소화했다는 점
-2. 그 지연 수준을 고정한 상태에서 2순위로 변동 운송비와 고정비 합계(${secondary_transport_cost:,})를 최소화했다는 점
-3. 지연 패널티(${total_delay_penalty:,})는 결과 비교용으로 계산된 값이라는 점
-4. 최종 결과는 담당자 승인이 필요하다는 점
-숫자는 주어진 결과만 사용하고 새로운 숫자를 만들어내지 마라.
-"""
+        explanation = (
+            f"납기 우선 사전식 최적화(DELAY_THEN_COST) 적용 결과, 1단계에서 총 지연 pallet-day가 최소 수준인 {total_delay_pallet_days} pallet·일로 확정되었습니다. "
+            f"2단계에서는 최적 지연 수준을 고정한 상태에서 순수 운송비 및 고정비(${secondary_transport_cost:,})를 최소화했습니다. "
+            f"배분 명세: [{detail_str}]. (참고용 지연 패널티: ${total_delay_penalty:,})"
+        )
     else:
-        gemini_prompt = f"""
-다음은 OR-Tools CP-SAT 최적화 (비용·지연 종합 최소화 policy) 계산 결과다:
-- Solver 상태: {status_str} (Optimal: {is_optimal})
-- 총 의사결정 비용: ${total_decision_cost:,}
-- 변동 운송비: ${total_var_cost:,}, 고정비: ${total_fixed_cost:,}, 지연 패널티: ${total_delay_penalty:,}
-- 대안별 배분 명세: [{detail_str}]
-
-3~5문장으로 다음을 설명하라:
-1. 운송비, 고정비, 지연 패널티의 종합 합계를 최소화하는 trade-off 정책으로 배분되었다는 점
-2. 대안별 주요 배분 내용과 용량 제약 준수 여부
-3. 최종 결정은 담당자가 승인해야 한다는 점
-숫자는 주어진 결과만 사용하고 새로운 숫자를 만들어내지 마라.
-"""
-
-    explanation = generate_text_with_gemini(gemini_prompt)
-    if not explanation:
-        if objective_mode == "DELAY_THEN_COST":
-            explanation = (
-                f"납기 우선 사전식 최적화(DELAY_THEN_COST) 적용 결과, 1단계에서 총 지연 pallet-day가 최소 수준인 {total_delay_pallet_days} pallet·일로 확정되었습니다. "
-                f"2단계에서는 최적 지연 수준을 고정한 상태에서 순수 운송비 및 고정비(${secondary_transport_cost:,})를 최소화했습니다. "
-                f"배분 명세: [{detail_str}]. (참고용 지연 패널티: ${total_delay_penalty:,}) "
-                f"※ 본 추천안은 담당자의 최종 승인 후 실행됩니다."
-            )
-        else:
-            explanation = (
-                f"종합 비용 최소화(TOTAL_DECISION_COST) 적용 결과, 총 의사결정 비용이 ${total_decision_cost:,}로 최적화되었습니다. "
-                f"(변동비 ${total_var_cost:,}, 고정비 ${total_fixed_cost:,}, 지연 패널티 ${total_delay_penalty:,}). "
-                f"배분 명세: [{detail_str}]. 공용 용량 제약이 엄격히 준수되었습니다. "
-                f"※ 본 추천안은 담당자의 최종 승인 후 실행됩니다."
-            )
+        explanation = (
+            f"종합 비용 최소화(TOTAL_DECISION_COST) 적용 결과, 총 의사결정 비용이 ${total_decision_cost:,}로 최적화되었습니다. "
+            f"(변동비 ${total_var_cost:,}, 고정비 ${total_fixed_cost:,}, 지연 패널티 ${total_delay_penalty:,}). "
+            f"배분 명세: [{detail_str}]. 공용 용량 제약을 모두 충족했습니다."
+        )
 
     return MixedOptimizeResponse(
         status=status_str,

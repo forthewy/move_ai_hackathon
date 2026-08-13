@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   GitMerge,
   Cpu,
@@ -17,7 +17,7 @@ import {
   Database,
 } from "lucide-react";
 import { OrderModel, MixedOptimizeResponse } from "../types";
-import { fetchOrders, optimizeMixedAllocation } from "../api/client";
+import { fetchOrders, optimizeMixedAllocation, explainResult } from "../api/client";
 
 export function TabMixedOptimization() {
   const [orders, setOrders] = useState<OrderModel[]>([]);
@@ -27,6 +27,10 @@ export function TabMixedOptimization() {
   const [result, setResult] = useState<MixedOptimizeResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiExplanationLoading, setAiExplanationLoading] = useState<boolean>(false);
+  const [aiExplanationError, setAiExplanationError] = useState<string | null>(null);
+  const explanationRequestId = useRef(0);
 
   useEffect(() => {
     fetchOrders()
@@ -38,6 +42,10 @@ export function TabMixedOptimization() {
   }, []);
 
   const handleRunOptimization = async () => {
+    explanationRequestId.current += 1;
+    setAiExplanation(null);
+    setAiExplanationLoading(false);
+    setAiExplanationError(null);
     setLoading(true);
     setError(null);
     try {
@@ -67,6 +75,53 @@ export function TabMixedOptimization() {
       setSelectedOrderIds(selectedOrderIds.filter((oId) => oId !== id));
     } else {
       setSelectedOrderIds([...selectedOrderIds, id]);
+    }
+  };
+
+  const handleGenerateAiExplanation = async () => {
+    if (!result || loading || aiExplanationLoading || aiExplanation) return;
+
+    const requestId = ++explanationRequestId.current;
+    setAiExplanationLoading(true);
+    setAiExplanationError(null);
+    try {
+      const explanation = await explainResult({
+        mode: "mixed",
+        data: {
+          solver_status: result.status,
+          is_optimal: result.is_optimal,
+          objective_mode: result.objective_mode,
+          stage1_status: result.stage1_status,
+          stage2_status: result.stage2_status,
+          total_variable_transport_cost: result.total_variable_transport_cost,
+          total_fixed_cost: result.total_fixed_cost,
+          total_delay_penalty: result.total_delay_penalty,
+          total_decision_cost: result.total_decision_cost,
+          total_delay_pallet_days: result.total_delay_pallet_days,
+          best_delay_pallet_days: result.best_delay_pallet_days,
+          secondary_transport_cost: result.secondary_transport_cost,
+          alternative_plan_usage: result.alternative_plan_usage,
+          air_usage: result.air_usage,
+          stock_transfer_usages: result.stock_transfer_usages,
+          option_activations: result.option_activations,
+          allocations: result.allocations,
+          facts: result.facts,
+          warnings: result.warnings,
+        },
+      });
+      if (requestId === explanationRequestId.current) {
+        setAiExplanation(explanation);
+      }
+    } catch (err) {
+      if (requestId === explanationRequestId.current) {
+        setAiExplanationError(
+          err instanceof Error ? err.message : "AI 결과 해설을 생성하지 못했습니다."
+        );
+      }
+    } finally {
+      if (requestId === explanationRequestId.current) {
+        setAiExplanationLoading(false);
+      }
     }
   };
 
@@ -510,20 +565,50 @@ export function TabMixedOptimization() {
             </div>
           </div>
 
-          {/* Gemini Fact-based Narrative Explanation Box */}
+          {/* On-demand AI Explanation */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              <h3 className="text-xs font-bold text-slate-900">
-                Gemini Mixed 최적 배분 리포트 및 담당자 승인 안내
-              </h3>
-              <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded font-medium">
-                🟣 AI 수치 해석
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Mixed 최적 배분 결과 해설</h3>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    필요할 때만 AI가 최적 배분과 용량·비용·지연 trade-off를 설명합니다.
+                  </p>
+                </div>
+              </div>
+
+              {!aiExplanation && (
+                <button
+                  type="button"
+                  onClick={handleGenerateAiExplanation}
+                  disabled={loading || aiExplanationLoading}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  {aiExplanationLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span>{aiExplanationLoading ? "AI 해설 생성 중..." : "AI 결과 해설 생성"}</span>
+                </button>
+              )}
             </div>
-            <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200/80 leading-relaxed font-sans">
-              {result.explanation}
-            </p>
+
+            {aiExplanation && (
+              <div className="mt-4 text-xs text-slate-700 bg-purple-50/50 p-4 rounded-xl border border-purple-200 leading-relaxed font-sans">
+                <div className="mb-2 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                  AI 해설 생성 완료
+                </div>
+                <p>{aiExplanation}</p>
+              </div>
+            )}
+
+            {aiExplanationError && (
+              <p className="mt-3 text-xs text-red-700 bg-red-50 p-3 rounded-xl border border-red-200">
+                AI 해설 생성 실패: {aiExplanationError}
+              </p>
+            )}
           </div>
         </div>
       )}

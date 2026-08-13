@@ -68,3 +68,22 @@ export async function optimizeMixedAllocation(
   }
   return data;
 }
+
+export async function explainResult(payload: {
+  mode: "pure" | "mixed";
+  data: Record<string, unknown>;
+}): Promise<string> {
+  const res = await fetch("/api/explain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error || data.detail || "Failed to generate explanation");
+  }
+  if (typeof data.explanation !== "string" || !data.explanation.trim()) {
+    throw new Error("AI explanation was empty");
+  }
+  return data.explanation;
+}

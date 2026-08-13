@@ -1,9 +1,16 @@
-from typing import Dict, Any
 from .schemas import ExplainRequest
 from .gemini_service import generate_text_with_gemini
 
 def explain_result(req: ExplainRequest) -> str:
-    prompt = f"다음 {req.mode} 계산 결과를 바탕으로 담당자를 위한 정밀 분석 보고서 및 선택 사유 요약을 작성하라:\n{req.data}"
+    prompt = f"""
+다음 {req.mode} 계산 결과를 물류 담당자가 빠르게 검토할 수 있도록 한국어로 설명하라.
+- 제공된 계산 결과에 있는 사실과 숫자만 사용하고, 새로운 수치나 전제는 만들지 않는다.
+- 추천 또는 배분 결과와 그 이유, 비용·지연의 핵심 trade-off를 3~5문장으로 설명한다.
+- 최종 실행에는 담당자의 검토가 필요하다는 점을 마지막에 짧게 밝힌다.
+
+계산 결과:
+{req.data}
+""".strip()
     out = generate_text_with_gemini(prompt)
     if out:
         return out

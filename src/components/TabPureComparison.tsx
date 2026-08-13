@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Layers,
   Sliders,
@@ -15,7 +15,7 @@ import {
   Cpu,
 } from "lucide-react";
 import { OrderModel, PureCompareResponse } from "../types";
-import { fetchOrders, comparePureOptions } from "../api/client";
+import { fetchOrders, comparePureOptions, explainResult } from "../api/client";
 
 export function TabPureComparison() {
   const [orders, setOrders] = useState<OrderModel[]>([]);
@@ -26,6 +26,10 @@ export function TabPureComparison() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [disruptionOccurred, setDisruptionOccurred] = useState<boolean>(true);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+  const [aiExplanationLoading, setAiExplanationLoading] = useState<boolean>(false);
+  const [aiExplanationError, setAiExplanationError] = useState<string | null>(null);
+  const explanationRequestId = useRef(0);
 
   // Load orders on mount
   useEffect(() => {
@@ -42,6 +46,10 @@ export function TabPureComparison() {
 
   // Update comparison whenever order or slider changes
   const runComparison = async (orderId: string, penaltyVal?: number, disruption?: boolean) => {
+    explanationRequestId.current += 1;
+    setAiExplanation(null);
+    setAiExplanationLoading(false);
+    setAiExplanationError(null);
     setLoading(true);
     setError(null);
     try {
@@ -65,6 +73,59 @@ export function TabPureComparison() {
   }, [selectedOrderId, delayPenaltyOverride, useOverride, disruptionOccurred]);
 
   const currentOrder = orders.find((o) => o.order_id === selectedOrderId);
+
+  const handleGenerateAiExplanation = async () => {
+    if (!result || loading || aiExplanationLoading || aiExplanation) return;
+
+    const requestId = ++explanationRequestId.current;
+    setAiExplanationLoading(true);
+    setAiExplanationError(null);
+    try {
+      const explanation = await explainResult({
+        mode: "pure",
+        data: {
+          order: {
+            order_id: result.order.order_id,
+            destination_plant: result.order.destination_plant,
+            part_id: result.order.part_id,
+            part_name: result.order.part_name,
+            qty: result.order.qty,
+            required_arrival_day: result.order.required_arrival_day,
+          },
+          disruption_occurred: disruptionOccurred,
+          applied_delay_penalty_per_pallet_day: useOverride
+            ? delayPenaltyOverride
+            : result.order.delay_penalty_per_pallet_day,
+          recommended_option_id: result.recommended_option_id,
+          options: result.options_results.map((option) => ({
+            option_id: option.option_id,
+            option_name: option.option_name,
+            available: option.available,
+            arrival_day: option.arrival_day,
+            delay_days: option.delay_days,
+            variable_transport_cost: option.variable_transport_cost,
+            fixed_activation_cost: option.fixed_activation_cost,
+            delay_penalty: option.delay_penalty,
+            decision_cost: option.decision_cost,
+            is_recommended: option.is_recommended,
+          })),
+        },
+      });
+      if (requestId === explanationRequestId.current) {
+        setAiExplanation(explanation);
+      }
+    } catch (err) {
+      if (requestId === explanationRequestId.current) {
+        setAiExplanationError(
+          err instanceof Error ? err.message : "AI 결과 해설을 생성하지 못했습니다."
+        );
+      }
+    } finally {
+      if (requestId === explanationRequestId.current) {
+        setAiExplanationLoading(false);
+      }
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -325,20 +386,50 @@ export function TabPureComparison() {
             })}
           </div>
 
-          {/* Gemini Narrative Explanation Box */}
+          {/* On-demand AI Explanation */}
           <div className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              <h3 className="text-xs font-bold text-slate-900">
-                Gemini Pure 대안 비교 정밀 심층 분석
-              </h3>
-              <span className="text-[10px] text-purple-800 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded font-medium">
-                🟣 AI 분석 요약
-              </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <div>
+                  <h3 className="text-xs font-bold text-slate-900">Pure 대안 결과 해설</h3>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    필요할 때만 AI가 계산 결과와 비용·지연 trade-off를 설명합니다.
+                  </p>
+                </div>
+              </div>
+
+              {!aiExplanation && (
+                <button
+                  type="button"
+                  onClick={handleGenerateAiExplanation}
+                  disabled={loading || aiExplanationLoading}
+                  className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  {aiExplanationLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                  <span>{aiExplanationLoading ? "AI 해설 생성 중..." : "AI 결과 해설 생성"}</span>
+                </button>
+              )}
             </div>
-            <p className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200/80 leading-relaxed font-sans">
-              {result.explanation}
-            </p>
+
+            {aiExplanation && (
+              <div className="mt-4 text-xs text-slate-700 bg-purple-50/50 p-4 rounded-xl border border-purple-200 leading-relaxed font-sans">
+                <div className="mb-2 text-[10px] font-bold text-purple-700 uppercase tracking-wider">
+                  AI 해설 생성 완료
+                </div>
+                <p>{aiExplanation}</p>
+              </div>
+            )}
+
+            {aiExplanationError && (
+              <p className="mt-3 text-xs text-red-700 bg-red-50 p-3 rounded-xl border border-red-200">
+                AI 해설 생성 실패: {aiExplanationError}
+              </p>
+            )}
           </div>
         </div>
       )}

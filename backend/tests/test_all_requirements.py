@@ -335,3 +335,25 @@ def test_19_disruption_toggle_is_preserved_in_both_objective_modes():
         assert disrupted.status in ["OPTIMAL", "FEASIBLE"]
         assert normal.total_delay_pallet_days == 0
         assert disrupted.total_delay_pallet_days >= normal.total_delay_pallet_days
+
+
+def test_20_optimization_does_not_call_gemini_automatically(monkeypatch):
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("Pure/Mixed calculation must not call Gemini automatically")
+
+    monkeypatch.setattr(
+        "backend.app.pure_service.generate_text_with_gemini",
+        fail_if_called,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "backend.app.mixed_service.generate_text_with_gemini",
+        fail_if_called,
+        raising=False,
+    )
+
+    pure = compare_pure_options(PureCompareRequest(order_id="ORD-CZ-01"))
+    mixed = optimize_mixed_allocation(MixedOptimizeRequest())
+
+    assert pure.recommended_option_id is not None
+    assert mixed.status in ["OPTIMAL", "FEASIBLE"]
