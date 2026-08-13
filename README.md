@@ -107,9 +107,7 @@ flowchart LR
 별도 데이터베이스는 사용하지 않습니다. 주문·재고·운송 대안과 설정값은 `backend/data`의 JSON 파일에서 읽습니다.
 
 ## 로컬 실행
-
-
-### 4.환경변수 설정
+### 환경변수 설정
 
 ```dotenv
 GEMINI_API_KEY="YOUR_API_KEY"
@@ -122,44 +120,6 @@ NAVER_CLIENT_SECRET=""
 ```
 
 `GEMINI_API_KEY`는 실시간 기사·키워드 위험 분석에 필요합니다. Pure·Mixed 계산 자체는 API 키 없이도 실행할 수 있습니다.
-
-### 5. 개발 서버 실행
-
-Python 가상환경이 활성화된 터미널에서 실행합니다.
-
-```bash
-npm run dev
-```
-
-브라우저에서 [http://localhost:3000](http://localhost:3000)을 엽니다. Express가 Vite 화면과 API를 함께 제공하며, API 요청 시 현재 가상환경의 Python을 호출합니다.
-
-## 빌드와 테스트
-
-```bash
-# TypeScript 검사
-npm run lint
-
-# Python 테스트
-python -m pytest backend/tests -q
-
-# 프로덕션 빌드
-npm run build
-```
-
-프로덕션 실행:
-
-Windows PowerShell:
-
-```powershell
-$env:NODE_ENV="production"
-npm start
-```
-
-macOS/Linux:
-
-```bash
-NODE_ENV=production npm start
-```
 
 ## 주요 API
 
