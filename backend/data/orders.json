@@ -1,0 +1,122 @@
+[
+  {
+    "shipment_id": "ORD-CZ-01",
+    "plant": "HMMC_CZ",
+    "part_code": "PART_ECU",
+    "part_name": "엔진 제어 모듈(ECU)",
+    "qty": 3,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-15",
+    "required_arrival_date": "2026-09-14",
+    "delay_penalty_per_pallet_day": 500,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-CZ-02",
+    "plant": "HMMC_CZ",
+    "part_code": "PART_MCU",
+    "part_name": "모터 제어기(MCU)",
+    "qty": 10,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-18",
+    "required_arrival_date": "2026-09-17",
+    "delay_penalty_per_pallet_day": 600,
+    "is_compatible": false
+  },
+  {
+    "shipment_id": "ORD-CZ-03",
+    "plant": "HMMC_CZ",
+    "part_code": "PART_SENSOR",
+    "part_name": "전방 카메라 센서",
+    "qty": 10,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-14",
+    "required_arrival_date": "2026-09-13",
+    "delay_penalty_per_pallet_day": 2000,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-CZ-04",
+    "plant": "HMMC_CZ",
+    "part_code": "PART_ECU",
+    "part_name": "엔진 제어 모듈(ECU)",
+    "qty": 14,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-20",
+    "required_arrival_date": "2026-09-19",
+    "delay_penalty_per_pallet_day": 200,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-CZ-05",
+    "plant": "HMMC_CZ",
+    "part_code": "PART_MCU",
+    "part_name": "모터 제어기(MCU)",
+    "qty": 8,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-22",
+    "required_arrival_date": "2026-09-21",
+    "delay_penalty_per_pallet_day": 700,
+    "is_compatible": false
+  },
+  {
+    "shipment_id": "ORD-SK-01",
+    "plant": "KASK_SK",
+    "part_code": "PART_ECU",
+    "part_name": "엔진 제어 모듈(ECU)",
+    "qty": 4,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-16",
+    "required_arrival_date": "2026-09-15",
+    "delay_penalty_per_pallet_day": 500,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-SK-02",
+    "plant": "KASK_SK",
+    "part_code": "PART_SENSOR",
+    "part_name": "전방 카메라 센서",
+    "qty": 8,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-13",
+    "required_arrival_date": "2026-09-12",
+    "delay_penalty_per_pallet_day": 1800,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-SK-03",
+    "plant": "KASK_SK",
+    "part_code": "PART_MCU",
+    "part_name": "모터 제어기(MCU)",
+    "qty": 10,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-19",
+    "required_arrival_date": "2026-09-18",
+    "delay_penalty_per_pallet_day": 550,
+    "is_compatible": false
+  },
+  {
+    "shipment_id": "ORD-SK-04",
+    "plant": "KASK_SK",
+    "part_code": "PART_SENSOR",
+    "part_name": "전방 카메라 센서",
+    "qty": 2,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-17",
+    "required_arrival_date": "2026-09-16",
+    "delay_penalty_per_pallet_day": 1200,
+    "is_compatible": true
+  },
+  {
+    "shipment_id": "ORD-SK-05",
+    "plant": "KASK_SK",
+    "part_code": "PART_ECU",
+    "part_name": "엔진 제어 모듈(ECU)",
+    "qty": 12,
+    "required_arrival_day": 30,
+    "planned_departure_date": "2026-08-21",
+    "required_arrival_date": "2026-09-20",
+    "delay_penalty_per_pallet_day": 300,
+    "is_compatible": true
+  }
+]

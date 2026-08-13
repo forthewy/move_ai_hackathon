@@ -1,0 +1,6 @@
+{
+  "name": "Gemini 기반 KD 물류 차질 대응 앱",
+  "description": "홍해·수에즈 물류 차질 전후 해외 생산공장향 KD 자동차부품의 위험을 정성 분석하고 OR-Tools 최적 대안을 배분하는 의사결정 지원 서비스",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

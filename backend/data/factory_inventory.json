@@ -1,0 +1,30 @@
+{
+  "HMMC_CZ": {
+    "PART_ECU": {
+      "current_stock": 13,
+      "min_safety_stock": 10
+    },
+    "PART_SENSOR": {
+      "current_stock": 8,
+      "min_safety_stock": 5
+    },
+    "PART_MCU": {
+      "current_stock": 10,
+      "min_safety_stock": 10
+    }
+  },
+  "KASK_SK": {
+    "PART_ECU": {
+      "current_stock": 14,
+      "min_safety_stock": 10
+    },
+    "PART_SENSOR": {
+      "current_stock": 6,
+      "min_safety_stock": 5
+    },
+    "PART_MCU": {
+      "current_stock": 9,
+      "min_safety_stock": 8
+    }
+  }
+}

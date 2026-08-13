@@ -1,0 +1,86 @@
+{
+  "HMMC_CZ": {
+    "WAIT": {
+      "option_name": "기존 계획 유지·대기",
+      "passes_red_sea": true,
+      "baseline_arrival_day": 30,
+      "disruption_delay": 12,
+      "fixed_cost": 0,
+      "unit_cost_per_pallet": 3000,
+      "max_qty": 999,
+      "available": true
+    },
+    "ALT_ROUTE": {
+      "option_name": "대체 운송계획 (함부르크 우회)",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 34,
+      "disruption_delay": 0,
+      "fixed_cost": 1000,
+      "unit_cost_per_pallet": 6500,
+      "max_qty": 12,
+      "available": true
+    },
+    "STOCK_MOVE": {
+      "option_name": "인근 공장 재고 이동",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 28,
+      "disruption_delay": 0,
+      "fixed_cost": 500,
+      "unit_cost_per_pallet": 1200,
+      "max_qty": 4,
+      "available": true
+    },
+    "AIR": {
+      "option_name": "긴급 항공 수송",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 4,
+      "disruption_delay": 0,
+      "fixed_cost": 2000,
+      "unit_cost_per_pallet": 25000,
+      "max_qty": 15,
+      "available": true
+    }
+  },
+  "KASK_SK": {
+    "WAIT": {
+      "option_name": "기존 계획 유지·대기",
+      "passes_red_sea": true,
+      "baseline_arrival_day": 30,
+      "disruption_delay": 12,
+      "fixed_cost": 0,
+      "unit_cost_per_pallet": 3000,
+      "max_qty": 999,
+      "available": true
+    },
+    "ALT_ROUTE": {
+      "option_name": "대체 운송계획 (함부르크 우회)",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 35,
+      "disruption_delay": 0,
+      "fixed_cost": 1000,
+      "unit_cost_per_pallet": 6700,
+      "max_qty": 12,
+      "available": true
+    },
+    "STOCK_MOVE": {
+      "option_name": "인근 공장 재고 이동",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 28,
+      "disruption_delay": 0,
+      "fixed_cost": 500,
+      "unit_cost_per_pallet": 1200,
+      "max_qty": 4,
+      "available": true
+    },
+    "AIR": {
+      "option_name": "긴급 항공 수송",
+      "passes_red_sea": false,
+      "baseline_arrival_day": 4,
+      "disruption_delay": 0,
+      "fixed_cost": 2000,
+      "unit_cost_per_pallet": 25000,
+      "max_qty": 15,
+      "available": true
+    }
+  }
+}

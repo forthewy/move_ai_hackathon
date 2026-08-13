@@ -1,0 +1,102 @@
+export interface OrderModel {
+  order_id: string;
+  destination_plant: string;
+  part_id: string;
+  part_name: string;
+  qty: number;
+  required_arrival_day: number;
+  planned_departure_date: string;
+  required_arrival_date: string;
+  delay_penalty_per_pallet_day: number;
+  is_compatible: boolean;
+}
+
+export interface PriorityShipment {
+  order_id: string;
+  destination_plant: string;
+  part_id: string;
+  part_name: string;
+  qty: number;
+  planned_departure_date: string;
+  required_arrival_date: string;
+}
+
+export interface RiskAnalyzeResponse {
+  situation_summary: string;
+  risk_grade: "LOW" | "MEDIUM" | "HIGH";
+  priority_shipments: PriorityShipment[];
+  evidence_summary: string[];
+  uncertainty: string[];
+  preparation_actions: string[];
+  is_synthetic: boolean;
+}
+
+export interface PureOptionResult {
+  option_id: string;
+  option_name: string;
+  available: boolean;
+  unavailability_reason?: string;
+  arrival_day: number;
+  delay_days: number;
+  variable_transport_cost: number;
+  fixed_activation_cost: number;
+  delay_penalty: number;
+  decision_cost: number;
+  is_recommended: boolean;
+}
+
+export interface PureCompareResponse {
+  order: OrderModel;
+  options_results: PureOptionResult[];
+  recommended_option_id?: string;
+  explanation: string;
+}
+
+export interface AllocationItem {
+  order_id: string;
+  destination_plant: string;
+  part_id: string;
+  option_id: string;
+  allocated_qty: number;
+  arrival_day: number;
+  delay_days: number;
+  variable_transport_cost: number;
+  delay_penalty: number;
+}
+
+export interface CapacityUsage {
+  used_qty: number;
+  total_capacity: number;
+}
+
+export interface StockTransferUsage {
+  destination_plant: string;
+  part_id: string;
+  used_qty: number;
+  transferable_qty: number;
+}
+
+export interface OptionActivation {
+  destination_plant: string;
+  option_id: string;
+  activated: boolean;
+  fixed_cost: number;
+}
+
+export interface MixedOptimizeResponse {
+  status: string;
+  is_optimal: boolean;
+  solve_time_ms: number;
+  total_variable_transport_cost: number;
+  total_fixed_cost: number;
+  total_delay_penalty: number;
+  total_decision_cost: number;
+  total_delay_pallet_days: number;
+  allocations: AllocationItem[];
+  alternative_plan_usage: CapacityUsage;
+  air_usage: CapacityUsage;
+  stock_transfer_usages: StockTransferUsage[];
+  option_activations: OptionActivation[];
+  facts: string[];
+  explanation: string;
+}

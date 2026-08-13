@@ -1,0 +1,7 @@
+{
+  "air_total_capacity": 15,
+  "alternative_plan_total_capacity": 50,
+  "cost_currency": "USD",
+  "quantity_unit": "pallet",
+  "time_unit": "day"
+}
