@@ -7,7 +7,7 @@
     "qty": 3,
     "required_arrival_day": 28,
     "delay_penalty_per_pallet_day": 1200,
-    "is_compatible": true,
+    "is_compatible": true
   },
   {
     "shipment_id": "ORD-CZ-02",
@@ -17,7 +17,7 @@
     "qty": 10,
     "required_arrival_day": 30,
     "delay_penalty_per_pallet_day": 600,
-    "is_compatible": false,
+    "is_compatible": false
   },
   {
     "shipment_id": "ORD-CZ-03",
@@ -27,7 +27,7 @@
     "qty": 12,
     "required_arrival_day": 25,
     "delay_penalty_per_pallet_day": 2500,
-    "is_compatible": true,
+    "is_compatible": true
   },
   {
     "shipment_id": "ORD-SK-01",
@@ -37,7 +37,7 @@
     "qty": 4,
     "required_arrival_day": 28,
     "delay_penalty_per_pallet_day": 1000,
-    "is_compatible": true,
+    "is_compatible": true
   },
   {
     "shipment_id": "ORD-SK-02",
@@ -47,7 +47,7 @@
     "qty": 14,
     "required_arrival_day": 35,
     "delay_penalty_per_pallet_day": 200,
-    "is_compatible": false,
+    "is_compatible": false
   },
   {
     "shipment_id": "ORD-SK-03",
@@ -57,6 +57,6 @@
     "qty": 8,
     "required_arrival_day": 30,
     "delay_penalty_per_pallet_day": 800,
-    "is_compatible": true,
+    "is_compatible": true
   }
 ]
