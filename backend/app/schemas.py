@@ -175,6 +175,7 @@ class PureCompareResponse(BaseModel):
 class MixedOptimizeRequest(BaseModel):
     selected_order_ids: Optional[List[str]] = None
     disruption_occurred: bool = True
+    objective_mode: Literal["TOTAL_DECISION_COST", "DELAY_THEN_COST"] = "TOTAL_DECISION_COST"
 
 class AllocationItem(BaseModel):
     order_id: str
@@ -204,9 +205,15 @@ class OptionActivation(BaseModel):
     fixed_cost: int
 
 class MixedOptimizeResponse(BaseModel):
-    status: str  # OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN, MODEL_INVALID
+    status: str  # OPTIMAL, FEASIBLE, INFEASIBLE, UNKNOWN, MODEL_INVALID, INVALID_ORDER_ID
     is_optimal: bool
     solve_time_ms: float
+    objective_mode: str = "TOTAL_DECISION_COST"
+    stage1_status: Optional[str] = None
+    stage2_status: Optional[str] = None
+    best_delay_pallet_days: Optional[int] = None
+    secondary_transport_cost: Optional[int] = None
+    warnings: List[str] = Field(default_factory=list)
     total_variable_transport_cost: int
     total_fixed_cost: int
     total_delay_penalty: int
@@ -219,6 +226,7 @@ class MixedOptimizeResponse(BaseModel):
     option_activations: List[OptionActivation]
     facts: List[str]
     explanation: str
+    error: Optional[str] = None
 
 # General Explain Request
 class ExplainRequest(BaseModel):

@@ -2,6 +2,7 @@ import {
   OrderModel,
   RiskAnalyzeResponse,
   PureCompareResponse,
+  MixedOptimizeRequest,
   MixedOptimizeResponse,
 } from "../types";
 
@@ -53,15 +54,17 @@ export async function comparePureOptions(payload: {
   return res.json();
 }
 
-export async function optimizeMixedAllocation(payload: {
-  selected_order_ids?: string[];
-  disruption_occurred?: boolean;
-}): Promise<MixedOptimizeResponse> {
+export async function optimizeMixedAllocation(
+  payload: MixedOptimizeRequest
+): Promise<MixedOptimizeResponse> {
   const res = await fetch("/api/mixed/optimize", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error("Failed to optimize mixed allocation");
-  return res.json();
+  const data = await res.json();
+  if (!res.ok || data.error) {
+    throw new Error(data.error || "Failed to optimize mixed allocation");
+  }
+  return data;
 }
