@@ -108,60 +108,8 @@ flowchart LR
 
 ## 로컬 실행
 
-### 요구사항
 
-- Node.js 18 이상
-- Python 3.10 이상
-- npm
-
-### 1. 저장소 준비
-
-```bash
-git clone https://github.com/forthewy/move_ai_hackathon.git
-cd move_ai_hackathon
-```
-
-### 2. Python 환경과 패키지 설치
-
-Windows PowerShell:
-
-```powershell
-python -m venv .venv
-.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-macOS/Linux:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-### 3. 프런트엔드 패키지 설치
-
-```bash
-npm install
-```
-
-### 4. 환경변수 설정
-
-`.env.example`을 복사해 `.env.local`을 만듭니다.
-
-Windows PowerShell:
-
-```powershell
-Copy-Item .env.example .env.local
-```
-
-macOS/Linux:
-
-```bash
-cp .env.example .env.local
-```
+### 4.환경변수 설정
 
 ```dotenv
 GEMINI_API_KEY="YOUR_API_KEY"
