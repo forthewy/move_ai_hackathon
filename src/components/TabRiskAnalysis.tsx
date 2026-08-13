@@ -31,7 +31,6 @@ export function TabRiskAnalysis() {
   const [inputMode, setInputMode] = useState<ManualInputMode>("KEYWORD");
   const [query, setQuery] = useState(DEFAULT_SCENARIO);
   const [articleUrl, setArticleUrl] = useState("");
-  const [selectedPreset, setSelectedPreset] = useState<RiskLevel | null>(null);
 
   // Real-time news search states (multi-selection)
   const [searchLoading, setSearchLoading] = useState(false);
@@ -43,35 +42,12 @@ export function TabRiskAnalysis() {
   const [result, setResult] = useState<RiskAnalyzeResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const presets = [
-    {
-      level: "HIGH" as const,
-      label: "홍해 선박 공격과 수에즈 운항 중단이 공식 발표된 상황",
-      queryText: "홍해 선박 공격 및 수에즈 운항 중단 공식 발표",
-      badgeColor: "bg-red-50 text-red-700 border-red-200",
-    },
-    {
-      level: "MEDIUM" as const,
-      label: "홍해 수송 위험 경고로 주요 선사가 우회를 검토하는 상황",
-      queryText: "홍해 수송 위험 경고 및 주요 선사 우회 검토",
-      badgeColor: "bg-amber-50 text-amber-700 border-amber-200",
-    },
-    {
-      level: "LOW" as const,
-      label: "중동 지역의 지정학적 긴장이 관찰되는 일반 상황",
-      queryText: "중동 지역 지정학적 긴장 및 일반 동향",
-      badgeColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    },
-  ];
-
   const canAnalyze =
-    selectedPreset !== null ||
     selectedArticles.length > 0 ||
     (inputMode === "KEYWORD" ? query.trim().length > 0 : articleUrl.trim().length > 0);
 
   const switchInputMode = (mode: ManualInputMode) => {
     setInputMode(mode);
-    setSelectedPreset(null);
     setError(null);
   };
 
@@ -98,7 +74,6 @@ export function TabRiskAnalysis() {
   };
 
   const toggleArticleSelection = (art: NewsSearchItem) => {
-    setSelectedPreset(null);
     setSelectedArticles((prev) => {
       const exists = prev.some((a) => a.link === art.link);
       if (exists) {
@@ -110,7 +85,6 @@ export function TabRiskAnalysis() {
   };
 
   const toggleSelectAllArticles = () => {
-    setSelectedPreset(null);
     if (selectedArticles.length === searchedArticles.length) {
       setSelectedArticles([]);
     } else {
@@ -128,7 +102,7 @@ export function TabRiskAnalysis() {
       return;
     }
 
-    if (inputMode === "ARTICLE" && !selectedPreset) {
+    if (inputMode === "ARTICLE") {
       try {
         const url = new URL(articleUrl.trim());
         if (!["http:", "https:"].includes(url.protocol)) throw new Error();
@@ -142,13 +116,7 @@ export function TabRiskAnalysis() {
     setError(null);
     try {
       let data: RiskAnalyzeResponse;
-      if (selectedPreset) {
-        data = await analyzeRisk({
-          input_mode: "KEYWORD",
-          query,
-          preset_level: selectedPreset,
-        });
-      } else if (selectedArticles.length > 0) {
+      if (selectedArticles.length > 0) {
         data = await analyzeRisk({
           input_mode: "ARTICLE",
           selected_articles: selectedArticles,
@@ -199,42 +167,6 @@ export function TabRiskAnalysis() {
           </span>
         </div>
 
-        <div className="mb-5">
-          <label className="block text-xs font-semibold text-slate-700 mb-2">
-            빠른 데모 시나리오 (합성 데이터)
-          </label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-            {presets.map((p) => (
-              <button
-                key={p.level}
-                type="button"
-                onClick={() => {
-                  setSelectedPreset(p.level);
-                  setInputMode("KEYWORD");
-                  setQuery(p.queryText);
-                  setArticleUrl("");
-                  setSelectedArticles([]);
-                  setSearchedArticles([]);
-                  setSearchExecuted(false);
-                }}
-                className={`p-3 rounded-xl border text-left text-xs transition-all flex flex-col justify-between cursor-pointer ${
-                  selectedPreset === p.level
-                    ? "bg-blue-50/80 border-blue-500 ring-2 ring-blue-500/20 text-slate-900 font-medium"
-                    : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${p.badgeColor}`}>
-                    {riskLabel(p.level)}
-                  </span>
-                  {selectedPreset === p.level && <span className="w-2 h-2 rounded-full bg-blue-600" />}
-                </div>
-                <span className="font-medium line-clamp-2">{p.label}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
         <div className="mb-4">
           <label className="block text-xs font-semibold text-slate-700 mb-2">
             분석 입력 방식
@@ -244,7 +176,7 @@ export function TabRiskAnalysis() {
               type="button"
               onClick={() => switchInputMode("KEYWORD")}
               className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-                inputMode === "KEYWORD" && !selectedPreset
+                inputMode === "KEYWORD"
                   ? "bg-white text-blue-700 shadow-sm border border-slate-200"
                   : "text-slate-500 hover:text-slate-800"
               }`}
@@ -280,7 +212,6 @@ export function TabRiskAnalysis() {
                   value={query}
                   onChange={(e) => {
                     setQuery(e.target.value);
-                    setSelectedPreset(null);
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !searchLoading) handleSearchNews();
@@ -414,7 +345,6 @@ export function TabRiskAnalysis() {
                 value={articleUrl}
                 onChange={(e) => {
                   setArticleUrl(e.target.value);
-                  setSelectedPreset(null);
                   setSelectedArticles([]);
                 }}
                 onKeyDown={(e) => {
@@ -479,16 +409,10 @@ export function TabRiskAnalysis() {
                     <span className={`px-3 py-0.5 rounded-full text-xs font-extrabold tracking-wider border ${riskColor}`}>
                       {riskLabel(result.risk_grade)}
                     </span>
-                    {result.is_synthetic ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1 font-medium">
-                        데모 시나리오
-                      </span>
-                    ) : (
-                      <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1 font-medium">
-                        <Globe className="w-3 h-3 text-purple-600" />
-                        최근 1달 실시간 기사 종합 분석
-                      </span>
-                    )}
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-purple-50 text-purple-800 border border-purple-200 flex items-center gap-1 font-medium">
+                      <Globe className="w-3 h-3 text-purple-600" />
+                      최근 1달 실시간 기사 종합 분석
+                    </span>
                   </div>
                   <h3 className="text-sm font-bold text-slate-900 mt-1">
                     홍해·수에즈 회랑 정성 위험 분석 결과

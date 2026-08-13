@@ -17,9 +17,9 @@ function runPythonBridge(cmd: string, payload: any = {}): Promise<any> {
   return new Promise((resolve, reject) => {
     const payloadStr = JSON.stringify(payload);
     const pythonCmd = process.platform === "win32" ? "python" : "python3";
-    execFile(
+    const child = execFile(
       pythonCmd,
-      ["-X", "utf8", "-m", "backend.app.bridge", cmd, payloadStr],
+      ["-X", "utf8", "-m", "backend.app.bridge", cmd],
       { cwd: process.cwd(), maxBuffer: 10 * 1024 * 1024 },
       (error, stdout, stderr) => {
         if (error) {
@@ -61,6 +61,11 @@ function runPythonBridge(cmd: string, payload: any = {}): Promise<any> {
         }
       }
     );
+
+    if (child.stdin) {
+      child.stdin.write(payloadStr);
+      child.stdin.end();
+    }
   });
 }
 

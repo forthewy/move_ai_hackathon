@@ -6,11 +6,15 @@ from backend.app.schemas import (
     PureCompareRequest,
     MixedOptimizeRequest,
     ExplainRequest,
+    NewsSearchRequest,
+    NewsSearchResponse,
+    NewsSearchItemSchema,
 )
 from backend.app.risk_service import analyze_risk
 from backend.app.pure_service import compare_pure_options
 from backend.app.mixed_service import optimize_mixed_allocation
 from backend.app.explanation_service import explain_result
+from backend.app.news_searcher import search_realtime_news
 
 def main():
     if len(sys.argv) < 2:
@@ -18,12 +22,19 @@ def main():
         sys.exit(1)
 
     cmd = sys.argv[1]
-    input_json = sys.argv[2] if len(sys.argv) > 2 else "{}"
+
+    # Prefer reading JSON payload from stdin to avoid Windows CLI quote escaping issues
+    input_json = sys.stdin.read().strip()
+    if not input_json and len(sys.argv) > 2:
+        input_json = sys.argv[2]
+    if not input_json:
+        input_json = "{}"
 
     try:
         data = json.loads(input_json)
-    except Exception:
-        data = {}
+    except Exception as e:
+        print(json.dumps({"error": f"Invalid JSON payload: {e}"}, ensure_ascii=False))
+        sys.exit(1)
 
     try:
         if cmd == "get_orders":
@@ -39,18 +50,7 @@ def main():
             req = RiskAnalyzeRequest(**data)
             res = analyze_risk(req)
             print(json.dumps(res.model_dump(), ensure_ascii=False))
-        elif cmd == "pure_compare":
-            req = PureCompareRequest(**data)
-            res = compare_pure_options(req)
-            print(json.dumps(res.model_dump(), ensure_ascii=False))
-        elif cmd == "mixed_optimize":
-            req = MixedOptimizeRequest(**data)
-            res = optimize_mixed_allocation(req)
-            print(json.dumps(res.model_dump(), ensure_ascii=False))
         elif cmd == "search_news":
-            from backend.app.schemas import NewsSearchRequest, NewsSearchResponse, NewsSearchItemSchema
-            from backend.app.news_searcher import search_realtime_news
-
             req = NewsSearchRequest(**data)
             items = search_realtime_news(req.query, req.limit or 5)
             res = NewsSearchResponse(
@@ -66,6 +66,14 @@ def main():
                     for i in items
                 ],
             )
+            print(json.dumps(res.model_dump(), ensure_ascii=False))
+        elif cmd == "pure_compare":
+            req = PureCompareRequest(**data)
+            res = compare_pure_options(req)
+            print(json.dumps(res.model_dump(), ensure_ascii=False))
+        elif cmd == "mixed_optimize":
+            req = MixedOptimizeRequest(**data)
+            res = optimize_mixed_allocation(req)
             print(json.dumps(res.model_dump(), ensure_ascii=False))
         elif cmd == "explain":
             req = ExplainRequest(**data)
