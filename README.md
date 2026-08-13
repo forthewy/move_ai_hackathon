@@ -106,8 +106,7 @@ flowchart LR
 
 별도 데이터베이스는 사용하지 않습니다. 주문·재고·운송 대안과 설정값은 `backend/data`의 JSON 파일에서 읽습니다.
 
-## 로컬 실행
-### 환경변수 설정
+## 환경변수 설정
 
 ```dotenv
 GEMINI_API_KEY="YOUR_API_KEY"
